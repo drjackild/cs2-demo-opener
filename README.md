@@ -54,7 +54,10 @@ HKEY_CURRENT_USER\Software\Valve\Steam
 It reads `SteamPath` and parses `config/loginusers.vdf` to retrieve local Steam IDs and usernames.
 
 ### 2. Multi-threaded Demo Parsing
-The backend processes the `.dem` file up to tick 15000 in a dedicated thread with an 8MB stack size to extract player names, slots, teams, and Steam IDs.
+The backend processes the `.dem` file up to tick 5000 in a dedicated thread with an 8MB stack size to extract player names, slots, teams, and Steam IDs.
+
+> [!NOTE]
+> Parsing is limited to tick 5000 (approx. 1 minute of 64-tick gameplay) to ensure scanning completes instantly. If a player connects/reconnects later in the match (e.g. after Round 1), they may not be detected during this initial scan. In such cases, you can select another player on their team to configure the team-based filters, but the late-joining player's own voice will remain muted since their slot index was not captured in the scan. As this is a very rare occasion, the app avoids slow dynamic parsing to keep scan times minimal.
 
 ### 3. Voice Mask Bitwise Calculations
 The bitwise masks are calculated as follows:

@@ -26,6 +26,14 @@ pub struct PlayerInfo {
 // Global thread-safe storage for parsed players since tauri's observer registration is type-based
 static PARSED_PLAYERS: Mutex<Option<HashMap<String, PlayerInfo>>> = Mutex::new(None);
 
+/// Decimal prefix for standard public individual SteamID64 values.
+/// Under the hood, a SteamID64 is constructed by combining:
+/// (Universe << 56) | (AccountType << 52) | (AccountInstance << 32) | AccountID.
+/// For public individual desktop accounts (Universe=1, Type=1, Instance=1),
+/// this base starts at 76561197960265728. Adding the 32-bit AccountID preserves
+/// the "7656119" prefix.
+const STEAM_ID64_INDIVIDUAL_PREFIX: &str = "7656119";
+
 #[derive(Default)]
 struct PlayerCollector;
 
@@ -69,15 +77,29 @@ impl PlayerCollector {
     }
 }
 
+fn get_steam_path() -> Result<&'static str, &'static str> {
+    static STEAM_PATH_CACHE: std::sync::OnceLock<Result<String, String>> =
+        std::sync::OnceLock::new();
+    let res = STEAM_PATH_CACHE.get_or_init(|| {
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let steam_key = hkcu
+            .open_subkey(r"Software\Valve\Steam")
+            .map_err(|e| format!("Steam registry key not found: {}", e))?;
+        let path: String = steam_key
+            .get_value("SteamPath")
+            .map_err(|e| format!("SteamPath value not found in registry: {}", e))?;
+        Ok(path)
+    });
+
+    match res {
+        Ok(s) => Ok(s.as_str()),
+        Err(e) => Err(e.as_str()),
+    }
+}
+
 #[tauri::command]
 fn get_steam_user_info() -> Result<Vec<SteamUser>, String> {
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let steam_key = hkcu
-        .open_subkey(r"Software\Valve\Steam")
-        .map_err(|e| format!("Steam registry key not found: {}", e))?;
-    let steam_path: String = steam_key
-        .get_value("SteamPath")
-        .map_err(|e| format!("SteamPath value not found in registry: {}", e))?;
+    let steam_path = get_steam_path()?;
 
     let path = Path::new(&steam_path).join("config").join("loginusers.vdf");
     let file = File::open(&path).map_err(|e| format!("Failed to open loginusers.vdf: {}", e))?;
@@ -94,7 +116,9 @@ fn get_steam_user_info() -> Result<Vec<SteamUser>, String> {
 
         if line.starts_with('"') && line.ends_with('"') && line.len() == 19 {
             let id = &line[1..18];
-            if id.starts_with("7656119") && id.chars().all(|c| c.is_ascii_digit()) {
+            if id.starts_with(STEAM_ID64_INDIVIDUAL_PREFIX)
+                && id.chars().all(|c| c.is_ascii_digit())
+            {
                 current_id = Some(id.to_string());
                 continue;
             }
@@ -118,15 +142,9 @@ fn get_steam_user_info() -> Result<Vec<SteamUser>, String> {
 
 #[tauri::command]
 fn detect_cs2_path() -> Result<Option<String>, String> {
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let steam_key = hkcu
-        .open_subkey(r"Software\Valve\Steam")
-        .map_err(|e| format!("Steam registry key not found: {}", e))?;
-    let steam_path: String = steam_key
-        .get_value("SteamPath")
-        .map_err(|e| format!("SteamPath value not found in registry: {}", e))?;
+    let steam_path = get_steam_path()?;
 
-    let mut libraries = vec![steam_path.clone()];
+    let mut libraries = vec![steam_path.to_string()];
     let lib_vdf = Path::new(&steam_path)
         .join("steamapps")
         .join("libraryfolders.vdf");
@@ -187,10 +205,10 @@ fn parse_demo_players(demo_path: String) -> Result<Vec<PlayerInfo>, String> {
 
             parser.register_observer::<PlayerCollector>();
 
-            // Parse up to tick 15000 (usually enough to initialize player controllers)
+            // Parse up to tick 5000 (sufficient to initialize player controllers)
             // If run_to_tick errors out (e.g. EOF because the demo is shorter), we still proceed
-            println!("[Rust Backend] Running parser to tick 15000...");
-            let res = parser.run_to_tick(15000);
+            println!("[Rust Backend] Running parser to tick 5000...");
+            let res = parser.run_to_tick(5000);
             println!(
                 "[Rust Backend] Parser run_to_tick completed. Result: {:?}",
                 res
@@ -386,10 +404,7 @@ fn execute_cs2_launch(cs2_game_dir: &Path) -> Result<(), String> {
         return Err("cs2.exe not found".to_string());
     }
 
-    // Get SteamPath from registry to construct steam.exe path
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let steam_key = hkcu.open_subkey(r"Software\Valve\Steam").ok();
-    let steam_path: Option<String> = steam_key.and_then(|k| k.get_value("SteamPath").ok());
+    let steam_path = get_steam_path().ok();
 
     let launched_via_steam = if let Some(path_str) = steam_path {
         let steam_exe = Path::new(&path_str).join("steam.exe");
@@ -573,16 +588,66 @@ mod tests {
             TestScenario {
                 name: "Hear all voices (5v5)",
                 players: vec![
-                    PlayerInfo { steam_id: "1".to_string(), name: "T1".to_string(), team: 2, slot: 0 },
-                    PlayerInfo { steam_id: "2".to_string(), name: "T2".to_string(), team: 2, slot: 1 },
-                    PlayerInfo { steam_id: "3".to_string(), name: "T3".to_string(), team: 2, slot: 2 },
-                    PlayerInfo { steam_id: "4".to_string(), name: "T4".to_string(), team: 2, slot: 3 },
-                    PlayerInfo { steam_id: "5".to_string(), name: "T5".to_string(), team: 2, slot: 32 },
-                    PlayerInfo { steam_id: "6".to_string(), name: "CT1".to_string(), team: 3, slot: 4 },
-                    PlayerInfo { steam_id: "7".to_string(), name: "CT2".to_string(), team: 3, slot: 5 },
-                    PlayerInfo { steam_id: "8".to_string(), name: "CT3".to_string(), team: 3, slot: 6 },
-                    PlayerInfo { steam_id: "9".to_string(), name: "CT4".to_string(), team: 3, slot: 7 },
-                    PlayerInfo { steam_id: "10".to_string(), name: "CT5".to_string(), team: 3, slot: 33 },
+                    PlayerInfo {
+                        steam_id: "1".to_string(),
+                        name: "T1".to_string(),
+                        team: 2,
+                        slot: 0,
+                    },
+                    PlayerInfo {
+                        steam_id: "2".to_string(),
+                        name: "T2".to_string(),
+                        team: 2,
+                        slot: 1,
+                    },
+                    PlayerInfo {
+                        steam_id: "3".to_string(),
+                        name: "T3".to_string(),
+                        team: 2,
+                        slot: 2,
+                    },
+                    PlayerInfo {
+                        steam_id: "4".to_string(),
+                        name: "T4".to_string(),
+                        team: 2,
+                        slot: 3,
+                    },
+                    PlayerInfo {
+                        steam_id: "5".to_string(),
+                        name: "T5".to_string(),
+                        team: 2,
+                        slot: 32,
+                    },
+                    PlayerInfo {
+                        steam_id: "6".to_string(),
+                        name: "CT1".to_string(),
+                        team: 3,
+                        slot: 4,
+                    },
+                    PlayerInfo {
+                        steam_id: "7".to_string(),
+                        name: "CT2".to_string(),
+                        team: 3,
+                        slot: 5,
+                    },
+                    PlayerInfo {
+                        steam_id: "8".to_string(),
+                        name: "CT3".to_string(),
+                        team: 3,
+                        slot: 6,
+                    },
+                    PlayerInfo {
+                        steam_id: "9".to_string(),
+                        name: "CT4".to_string(),
+                        team: 3,
+                        slot: 7,
+                    },
+                    PlayerInfo {
+                        steam_id: "10".to_string(),
+                        name: "CT5".to_string(),
+                        team: 3,
+                        slot: 33,
+                    },
                 ],
                 voice_mode: "all",
                 self_steam_id: "1",
@@ -593,8 +658,18 @@ mod tests {
             TestScenario {
                 name: "Hear no voices (5v5)",
                 players: vec![
-                    PlayerInfo { steam_id: "1".to_string(), name: "T1".to_string(), team: 2, slot: 0 },
-                    PlayerInfo { steam_id: "2".to_string(), name: "T2".to_string(), team: 2, slot: 1 },
+                    PlayerInfo {
+                        steam_id: "1".to_string(),
+                        name: "T1".to_string(),
+                        team: 2,
+                        slot: 0,
+                    },
+                    PlayerInfo {
+                        steam_id: "2".to_string(),
+                        name: "T2".to_string(),
+                        team: 2,
+                        slot: 1,
+                    },
                 ],
                 voice_mode: "none",
                 self_steam_id: "1",
@@ -606,17 +681,67 @@ mod tests {
                 name: "Hear only team (Self is T in 5v5)",
                 players: vec![
                     // Team 2 (T)
-                    PlayerInfo { steam_id: "1".to_string(), name: "T1".to_string(), team: 2, slot: 0 },
-                    PlayerInfo { steam_id: "2".to_string(), name: "T2".to_string(), team: 2, slot: 1 },
-                    PlayerInfo { steam_id: "3".to_string(), name: "T3".to_string(), team: 2, slot: 2 },
-                    PlayerInfo { steam_id: "4".to_string(), name: "T4".to_string(), team: 2, slot: 3 },
-                    PlayerInfo { steam_id: "5".to_string(), name: "T5".to_string(), team: 2, slot: 32 },
+                    PlayerInfo {
+                        steam_id: "1".to_string(),
+                        name: "T1".to_string(),
+                        team: 2,
+                        slot: 0,
+                    },
+                    PlayerInfo {
+                        steam_id: "2".to_string(),
+                        name: "T2".to_string(),
+                        team: 2,
+                        slot: 1,
+                    },
+                    PlayerInfo {
+                        steam_id: "3".to_string(),
+                        name: "T3".to_string(),
+                        team: 2,
+                        slot: 2,
+                    },
+                    PlayerInfo {
+                        steam_id: "4".to_string(),
+                        name: "T4".to_string(),
+                        team: 2,
+                        slot: 3,
+                    },
+                    PlayerInfo {
+                        steam_id: "5".to_string(),
+                        name: "T5".to_string(),
+                        team: 2,
+                        slot: 32,
+                    },
                     // Team 3 (CT)
-                    PlayerInfo { steam_id: "6".to_string(), name: "CT1".to_string(), team: 3, slot: 4 },
-                    PlayerInfo { steam_id: "7".to_string(), name: "CT2".to_string(), team: 3, slot: 5 },
-                    PlayerInfo { steam_id: "8".to_string(), name: "CT3".to_string(), team: 3, slot: 6 },
-                    PlayerInfo { steam_id: "9".to_string(), name: "CT4".to_string(), team: 3, slot: 7 },
-                    PlayerInfo { steam_id: "10".to_string(), name: "CT5".to_string(), team: 3, slot: 33 },
+                    PlayerInfo {
+                        steam_id: "6".to_string(),
+                        name: "CT1".to_string(),
+                        team: 3,
+                        slot: 4,
+                    },
+                    PlayerInfo {
+                        steam_id: "7".to_string(),
+                        name: "CT2".to_string(),
+                        team: 3,
+                        slot: 5,
+                    },
+                    PlayerInfo {
+                        steam_id: "8".to_string(),
+                        name: "CT3".to_string(),
+                        team: 3,
+                        slot: 6,
+                    },
+                    PlayerInfo {
+                        steam_id: "9".to_string(),
+                        name: "CT4".to_string(),
+                        team: 3,
+                        slot: 7,
+                    },
+                    PlayerInfo {
+                        steam_id: "10".to_string(),
+                        name: "CT5".to_string(),
+                        team: 3,
+                        slot: 33,
+                    },
                 ],
                 voice_mode: "team",
                 self_steam_id: "1", // T1 (Team 2)
@@ -631,17 +756,67 @@ mod tests {
                 name: "Hear only opponents (Self is T in 5v5)",
                 players: vec![
                     // Team 2 (T)
-                    PlayerInfo { steam_id: "1".to_string(), name: "T1".to_string(), team: 2, slot: 0 },
-                    PlayerInfo { steam_id: "2".to_string(), name: "T2".to_string(), team: 2, slot: 1 },
-                    PlayerInfo { steam_id: "3".to_string(), name: "T3".to_string(), team: 2, slot: 2 },
-                    PlayerInfo { steam_id: "4".to_string(), name: "T4".to_string(), team: 2, slot: 3 },
-                    PlayerInfo { steam_id: "5".to_string(), name: "T5".to_string(), team: 2, slot: 32 },
+                    PlayerInfo {
+                        steam_id: "1".to_string(),
+                        name: "T1".to_string(),
+                        team: 2,
+                        slot: 0,
+                    },
+                    PlayerInfo {
+                        steam_id: "2".to_string(),
+                        name: "T2".to_string(),
+                        team: 2,
+                        slot: 1,
+                    },
+                    PlayerInfo {
+                        steam_id: "3".to_string(),
+                        name: "T3".to_string(),
+                        team: 2,
+                        slot: 2,
+                    },
+                    PlayerInfo {
+                        steam_id: "4".to_string(),
+                        name: "T4".to_string(),
+                        team: 2,
+                        slot: 3,
+                    },
+                    PlayerInfo {
+                        steam_id: "5".to_string(),
+                        name: "T5".to_string(),
+                        team: 2,
+                        slot: 32,
+                    },
                     // Team 3 (CT)
-                    PlayerInfo { steam_id: "6".to_string(), name: "CT1".to_string(), team: 3, slot: 4 },
-                    PlayerInfo { steam_id: "7".to_string(), name: "CT2".to_string(), team: 3, slot: 5 },
-                    PlayerInfo { steam_id: "8".to_string(), name: "CT3".to_string(), team: 3, slot: 6 },
-                    PlayerInfo { steam_id: "9".to_string(), name: "CT4".to_string(), team: 3, slot: 7 },
-                    PlayerInfo { steam_id: "10".to_string(), name: "CT5".to_string(), team: 3, slot: 33 },
+                    PlayerInfo {
+                        steam_id: "6".to_string(),
+                        name: "CT1".to_string(),
+                        team: 3,
+                        slot: 4,
+                    },
+                    PlayerInfo {
+                        steam_id: "7".to_string(),
+                        name: "CT2".to_string(),
+                        team: 3,
+                        slot: 5,
+                    },
+                    PlayerInfo {
+                        steam_id: "8".to_string(),
+                        name: "CT3".to_string(),
+                        team: 3,
+                        slot: 6,
+                    },
+                    PlayerInfo {
+                        steam_id: "9".to_string(),
+                        name: "CT4".to_string(),
+                        team: 3,
+                        slot: 7,
+                    },
+                    PlayerInfo {
+                        steam_id: "10".to_string(),
+                        name: "CT5".to_string(),
+                        team: 3,
+                        slot: 33,
+                    },
                 ],
                 voice_mode: "opponent",
                 self_steam_id: "1", // T1 (Team 2) -> hears Team 3 (CT)
@@ -655,11 +830,36 @@ mod tests {
             TestScenario {
                 name: "Boundary slots check (0, 31, 32, 63)",
                 players: vec![
-                    PlayerInfo { steam_id: "1".to_string(), name: "Me".to_string(), team: 2, slot: 0 },
-                    PlayerInfo { steam_id: "2".to_string(), name: "Teammate1".to_string(), team: 2, slot: 31 }, // Upper bound low mask
-                    PlayerInfo { steam_id: "3".to_string(), name: "Teammate2".to_string(), team: 2, slot: 32 }, // Lower bound high mask
-                    PlayerInfo { steam_id: "4".to_string(), name: "Teammate3".to_string(), team: 2, slot: 63 }, // Upper bound high mask
-                    PlayerInfo { steam_id: "5".to_string(), name: "Enemy".to_string(), team: 3, slot: 5 },
+                    PlayerInfo {
+                        steam_id: "1".to_string(),
+                        name: "Me".to_string(),
+                        team: 2,
+                        slot: 0,
+                    },
+                    PlayerInfo {
+                        steam_id: "2".to_string(),
+                        name: "Teammate1".to_string(),
+                        team: 2,
+                        slot: 31,
+                    }, // Upper bound low mask
+                    PlayerInfo {
+                        steam_id: "3".to_string(),
+                        name: "Teammate2".to_string(),
+                        team: 2,
+                        slot: 32,
+                    }, // Lower bound high mask
+                    PlayerInfo {
+                        steam_id: "4".to_string(),
+                        name: "Teammate3".to_string(),
+                        team: 2,
+                        slot: 63,
+                    }, // Upper bound high mask
+                    PlayerInfo {
+                        steam_id: "5".to_string(),
+                        name: "Enemy".to_string(),
+                        team: 3,
+                        slot: 5,
+                    },
                 ],
                 voice_mode: "team",
                 self_steam_id: "1",
@@ -674,17 +874,67 @@ mod tests {
                 name: "Uneven team sizes (7 vs 3)",
                 players: vec![
                     // Team 2 (T) - 7 players
-                    PlayerInfo { steam_id: "1".to_string(), name: "T1".to_string(), team: 2, slot: 0 },
-                    PlayerInfo { steam_id: "2".to_string(), name: "T2".to_string(), team: 2, slot: 1 },
-                    PlayerInfo { steam_id: "3".to_string(), name: "T3".to_string(), team: 2, slot: 2 },
-                    PlayerInfo { steam_id: "4".to_string(), name: "T4".to_string(), team: 2, slot: 3 },
-                    PlayerInfo { steam_id: "5".to_string(), name: "T5".to_string(), team: 2, slot: 4 },
-                    PlayerInfo { steam_id: "6".to_string(), name: "T6".to_string(), team: 2, slot: 10 },
-                    PlayerInfo { steam_id: "7".to_string(), name: "T7".to_string(), team: 2, slot: 11 },
+                    PlayerInfo {
+                        steam_id: "1".to_string(),
+                        name: "T1".to_string(),
+                        team: 2,
+                        slot: 0,
+                    },
+                    PlayerInfo {
+                        steam_id: "2".to_string(),
+                        name: "T2".to_string(),
+                        team: 2,
+                        slot: 1,
+                    },
+                    PlayerInfo {
+                        steam_id: "3".to_string(),
+                        name: "T3".to_string(),
+                        team: 2,
+                        slot: 2,
+                    },
+                    PlayerInfo {
+                        steam_id: "4".to_string(),
+                        name: "T4".to_string(),
+                        team: 2,
+                        slot: 3,
+                    },
+                    PlayerInfo {
+                        steam_id: "5".to_string(),
+                        name: "T5".to_string(),
+                        team: 2,
+                        slot: 4,
+                    },
+                    PlayerInfo {
+                        steam_id: "6".to_string(),
+                        name: "T6".to_string(),
+                        team: 2,
+                        slot: 10,
+                    },
+                    PlayerInfo {
+                        steam_id: "7".to_string(),
+                        name: "T7".to_string(),
+                        team: 2,
+                        slot: 11,
+                    },
                     // Team 3 (CT) - 3 players
-                    PlayerInfo { steam_id: "8".to_string(), name: "CT1".to_string(), team: 3, slot: 5 },
-                    PlayerInfo { steam_id: "9".to_string(), name: "CT2".to_string(), team: 3, slot: 6 },
-                    PlayerInfo { steam_id: "10".to_string(), name: "CT3".to_string(), team: 3, slot: 7 },
+                    PlayerInfo {
+                        steam_id: "8".to_string(),
+                        name: "CT1".to_string(),
+                        team: 3,
+                        slot: 5,
+                    },
+                    PlayerInfo {
+                        steam_id: "9".to_string(),
+                        name: "CT2".to_string(),
+                        team: 3,
+                        slot: 6,
+                    },
+                    PlayerInfo {
+                        steam_id: "10".to_string(),
+                        name: "CT3".to_string(),
+                        team: 3,
+                        slot: 7,
+                    },
                 ],
                 voice_mode: "team",
                 self_steam_id: "8", // CT1 (Team 3)
@@ -697,10 +947,30 @@ mod tests {
             TestScenario {
                 name: "Spectator and unassigned team filtering",
                 players: vec![
-                    PlayerInfo { steam_id: "1".to_string(), name: "Me".to_string(), team: 2, slot: 0 },
-                    PlayerInfo { steam_id: "2".to_string(), name: "Teammate".to_string(), team: 2, slot: 1 },
-                    PlayerInfo { steam_id: "3".to_string(), name: "Spec".to_string(), team: 1, slot: 2 }, // Spectator
-                    PlayerInfo { steam_id: "4".to_string(), name: "Unassigned".to_string(), team: 0, slot: 3 }, // Unassigned
+                    PlayerInfo {
+                        steam_id: "1".to_string(),
+                        name: "Me".to_string(),
+                        team: 2,
+                        slot: 0,
+                    },
+                    PlayerInfo {
+                        steam_id: "2".to_string(),
+                        name: "Teammate".to_string(),
+                        team: 2,
+                        slot: 1,
+                    },
+                    PlayerInfo {
+                        steam_id: "3".to_string(),
+                        name: "Spec".to_string(),
+                        team: 1,
+                        slot: 2,
+                    }, // Spectator
+                    PlayerInfo {
+                        steam_id: "4".to_string(),
+                        name: "Unassigned".to_string(),
+                        team: 0,
+                        slot: 3,
+                    }, // Unassigned
                 ],
                 voice_mode: "team",
                 self_steam_id: "1",
@@ -713,11 +983,36 @@ mod tests {
             TestScenario {
                 name: "Non-sequential (sparse) slots check",
                 players: vec![
-                    PlayerInfo { steam_id: "1".to_string(), name: "T_Sparse1".to_string(), team: 2, slot: 0 },
-                    PlayerInfo { steam_id: "2".to_string(), name: "T_Sparse2".to_string(), team: 2, slot: 12 }, // Non-sequential gap
-                    PlayerInfo { steam_id: "3".to_string(), name: "T_Sparse3".to_string(), team: 2, slot: 33 }, // Non-sequential gap, high mask
-                    PlayerInfo { steam_id: "4".to_string(), name: "CT_Sparse1".to_string(), team: 3, slot: 5 },
-                    PlayerInfo { steam_id: "5".to_string(), name: "CT_Sparse2".to_string(), team: 3, slot: 45 }, // Non-sequential gap, high mask
+                    PlayerInfo {
+                        steam_id: "1".to_string(),
+                        name: "T_Sparse1".to_string(),
+                        team: 2,
+                        slot: 0,
+                    },
+                    PlayerInfo {
+                        steam_id: "2".to_string(),
+                        name: "T_Sparse2".to_string(),
+                        team: 2,
+                        slot: 12,
+                    }, // Non-sequential gap
+                    PlayerInfo {
+                        steam_id: "3".to_string(),
+                        name: "T_Sparse3".to_string(),
+                        team: 2,
+                        slot: 33,
+                    }, // Non-sequential gap, high mask
+                    PlayerInfo {
+                        steam_id: "4".to_string(),
+                        name: "CT_Sparse1".to_string(),
+                        team: 3,
+                        slot: 5,
+                    },
+                    PlayerInfo {
+                        steam_id: "5".to_string(),
+                        name: "CT_Sparse2".to_string(),
+                        team: 3,
+                        slot: 45,
+                    }, // Non-sequential gap, high mask
                 ],
                 voice_mode: "team",
                 self_steam_id: "1", // T_Sparse1 (Team 2)
@@ -745,14 +1040,12 @@ mod tests {
 
             let (mask_low, mask_high, unmuted) = result.unwrap();
             assert_eq!(
-                mask_low,
-                scenario.expected_mask_low,
+                mask_low, scenario.expected_mask_low,
                 "Scenario '{}' failed on low mask",
                 scenario.name
             );
             assert_eq!(
-                mask_high,
-                scenario.expected_mask_high,
+                mask_high, scenario.expected_mask_high,
                 "Scenario '{}' failed on high mask",
                 scenario.name
             );
