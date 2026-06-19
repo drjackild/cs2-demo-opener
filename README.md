@@ -1,10 +1,10 @@
-<img src="./screenshots/icon.png" alt="CS2 Demo Voice Opener Icon" width="128" height="128">
+<img src="./screenshots/icon.png?v=1" alt="CS2 Demo Voice Opener Icon" width="128" height="128">
 
 # CS2 Demo Voice Opener
 
 A desktop application for Counter-Strike 2 players and analysts to isolate and listen to specific team or player voice communications in match demos. Built with **Tauri v2**, **Rust**, and HTML/CSS/JS.
 
-![App Interface](./screenshots/main.jpg)
+![App Interface](./screenshots/main.jpg?v=1)
 
 ---
 
@@ -30,15 +30,15 @@ A desktop application for Counter-Strike 2 players and analysts to isolate and l
 ## Interface Preview
 
 ### Initial State
-![Initial drag and drop screen](./screenshots/main_empty.jpg)
+![Initial drag and drop screen](./screenshots/main_empty.jpg?v=1)
 
 ### Player List Selection
 Grouped by team (CT/T/Spectator) with local profiles tagged:
-![Player dropdown selector](./screenshots/main_select_player.jpg)
+![Player dropdown selector](./screenshots/main_select_player.jpg?v=1)
 
 ### Auto-Profile Selection
 Matches the user and resolves real Steam names in the background:
-![Auto-profile selection](./screenshots/main_profile_autoselection.jpg)
+![Auto-profile selection](./screenshots/main_profile_autoselection.jpg?v=1)
 
 ---
 
