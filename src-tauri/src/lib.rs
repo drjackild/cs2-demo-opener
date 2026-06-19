@@ -302,6 +302,124 @@ fn calculate_voice_masks(
     Ok((mask_low, mask_high, unmuted_players))
 }
 
+fn write_voice_demo_cfg(
+    cs2_game_dir: &Path,
+    demo_filename: &str,
+    voice_mode: &str,
+    self_player: Option<&PlayerInfo>,
+    mask_low: i32,
+    mask_high: i32,
+    unmuted_players: &[PlayerInfo],
+) -> Result<(), String> {
+    let cfg_dir = cs2_game_dir.join("csgo").join("cfg");
+    std::fs::create_dir_all(&cfg_dir)
+        .map_err(|e| format!("Failed to create cfg directory: {}", e))?;
+
+    let cfg_path = cfg_dir.join("voice_demo.cfg");
+    let mut cfg_file =
+        File::create(&cfg_path).map_err(|e| format!("Failed to create cfg file: {}", e))?;
+
+    let self_player_info = match self_player {
+        Some(p) => format!(
+            "{} (Slot {}, Team {})",
+            p.name.replace('"', ""),
+            p.slot,
+            p.team
+        ),
+        None => "None Selected (Fallback: Hearing All)".to_string(),
+    };
+
+    let mut unmuted_players_text = String::new();
+    if unmuted_players.is_empty() {
+        unmuted_players_text.push_str("echo \"   - NONE (Muted all voices)\"\n");
+    } else {
+        for p in unmuted_players {
+            let team_name = if p.team == 3 {
+                "CT"
+            } else if p.team == 2 {
+                "T"
+            } else {
+                "Other"
+            };
+            unmuted_players_text.push_str(&format!(
+                "echo \"   - Slot {:2}: {:<16} [Team: {}]\"\n",
+                p.slot,
+                p.name.replace('"', ""),
+                team_name
+            ));
+        }
+    }
+
+    let content = format!(
+        r#"echo ""
+echo "=================================================="
+echo "   CS2 DEMO VOICE OPENER - CONFIG LOADED"
+echo "=================================================="
+echo " Voice Mode: {}"
+echo " Profile (Me): {}"
+echo "--------------------------------------------------"
+echo " Unmuted Players:"
+{}echo "=================================================="
+echo ""
+tv_listen_voice_indices {}
+tv_listen_voice_indices_h {}
+playdemo "demos/{}"
+"#,
+        voice_mode.to_uppercase(),
+        self_player_info,
+        unmuted_players_text,
+        mask_low,
+        mask_high,
+        demo_filename
+    );
+
+    cfg_file
+        .write_all(content.as_bytes())
+        .map_err(|e| format!("Failed to write cfg file content: {}", e))?;
+
+    Ok(())
+}
+
+fn execute_cs2_launch(cs2_game_dir: &Path) -> Result<(), String> {
+    let cs2_exe = cs2_game_dir.join("bin").join("win64").join("cs2.exe");
+    if !cs2_exe.exists() {
+        return Err("cs2.exe not found".to_string());
+    }
+
+    // Get SteamPath from registry to construct steam.exe path
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let steam_key = hkcu.open_subkey(r"Software\Valve\Steam").ok();
+    let steam_path: Option<String> = steam_key.and_then(|k| k.get_value("SteamPath").ok());
+
+    let launched_via_steam = if let Some(path_str) = steam_path {
+        let steam_exe = Path::new(&path_str).join("steam.exe");
+        if steam_exe.exists() {
+            Command::new(steam_exe)
+                .arg("-applaunch")
+                .arg("730")
+                .arg("+exec")
+                .arg("voice_demo.cfg")
+                .spawn()
+                .is_ok()
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+
+    if !launched_via_steam {
+        // Fallback: Launch directly via cs2.exe if Steam is not found
+        Command::new(cs2_exe)
+            .arg("+exec")
+            .arg("voice_demo.cfg")
+            .spawn()
+            .map_err(|e| format!("Failed to start CS2 directly: {}", e))?;
+    }
+
+    Ok(())
+}
+
 #[tauri::command]
 fn launch_cs2_demo(
     demo_path: String,
@@ -354,96 +472,22 @@ fn launch_cs2_demo(
         })?;
     }
 
-    // Identify self player
+    // 2. Identify self player and compute voice masks
     let self_player = players.iter().find(|p| p.steam_id == self_steam_id);
-
     let (mask_low, mask_high, unmuted_players) =
         calculate_voice_masks(&voice_mode, &self_steam_id, &players)?;
 
     // 3. Write cfg file inside game/csgo/cfg/voice_demo.cfg
-    let cfg_dir = cs2_game_dir.join("csgo").join("cfg");
-    std::fs::create_dir_all(&cfg_dir)
-        .map_err(|e| format!("Failed to create cfg directory: {}", e))?;
-
-    let cfg_path = cfg_dir.join("voice_demo.cfg");
-    let mut cfg_file =
-        File::create(&cfg_path).map_err(|e| format!("Failed to create cfg file: {}", e))?;
-
-    let demo_relative_path = format!("demos/{}", filename.to_string_lossy());
-
-    // Write player and mode details as console echos for easy debugging in-game
-    let self_player_info = match self_player {
-        Some(p) => format!(
-            "{} (Slot {}, Team {})",
-            p.name.replace('"', ""),
-            p.slot,
-            p.team
-        ),
-        None => "None Selected (Fallback: Hearing All)".to_string(),
-    };
-
-    writeln!(cfg_file, "echo \"\"").map_err(|e| e.to_string())?;
-    writeln!(
-        cfg_file,
-        "echo \"==================================================\""
-    )
-    .map_err(|e| e.to_string())?;
-    writeln!(
-        cfg_file,
-        "echo \"   CS2 DEMO VOICE OPENER - CONFIG LOADED\""
-    )
-    .map_err(|e| e.to_string())?;
-    writeln!(
-        cfg_file,
-        "echo \"==================================================\""
-    )
-    .map_err(|e| e.to_string())?;
-    writeln!(
-        cfg_file,
-        "echo \" Voice Mode: {}\"",
-        voice_mode.to_uppercase()
-    )
-    .map_err(|e| e.to_string())?;
-    writeln!(cfg_file, "echo \" Profile (Me): {}\"", self_player_info)
-        .map_err(|e| e.to_string())?;
-    writeln!(
-        cfg_file,
-        "echo \"--------------------------------------------------\""
-    )
-    .map_err(|e| e.to_string())?;
-    writeln!(cfg_file, "echo \" Unmuted Players:\"").map_err(|e| e.to_string())?;
-
-    if unmuted_players.is_empty() {
-        writeln!(cfg_file, "echo \"   - NONE (Muted all voices)\"").map_err(|e| e.to_string())?;
-    } else {
-        for p in &unmuted_players {
-            let team_name = if p.team == 3 {
-                "CT"
-            } else if p.team == 2 {
-                "T"
-            } else {
-                "Other"
-            };
-            writeln!(
-                cfg_file,
-                "echo \"   - Slot {:2}: {:<16} [Team: {}]\"",
-                p.slot,
-                p.name.replace('"', ""),
-                team_name
-            )
-            .map_err(|e| e.to_string())?;
-        }
-    }
-    writeln!(
-        cfg_file,
-        "echo \"==================================================\""
-    )
-    .map_err(|e| e.to_string())?;
-    writeln!(cfg_file, "echo \"\"").map_err(|e| e.to_string())?;
-
-    writeln!(cfg_file, "tv_listen_voice_indices {}", mask_low).map_err(|e| e.to_string())?;
-    writeln!(cfg_file, "tv_listen_voice_indices_h {}", mask_high).map_err(|e| e.to_string())?;
-    writeln!(cfg_file, "playdemo \"{}\"", demo_relative_path).map_err(|e| e.to_string())?;
+    let filename_str = filename.to_string_lossy();
+    write_voice_demo_cfg(
+        cs2_game_dir,
+        &filename_str,
+        &voice_mode,
+        self_player,
+        mask_low,
+        mask_high,
+        &unmuted_players,
+    )?;
 
     // Check if CS2 is already running
     use std::os::windows::process::CommandExt;
@@ -459,16 +503,7 @@ fn launch_cs2_demo(
     }
 
     // 4. Launch CS2
-    let cs2_exe = cs2_game_dir.join("bin").join("win64").join("cs2.exe");
-    if !cs2_exe.exists() {
-        return Err("cs2.exe not found".to_string());
-    }
-
-    Command::new(cs2_exe)
-        .arg("+exec")
-        .arg("voice_demo.cfg")
-        .spawn()
-        .map_err(|e| format!("Failed to start CS2: {}", e))?;
+    execute_cs2_launch(cs2_game_dir)?;
 
     Ok("launched".to_string())
 }
