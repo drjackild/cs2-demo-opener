@@ -1,0 +1,46 @@
+name: 'Publish Release'
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger when pushing tags like v1.0.0, v0.1.1
+  workflow_dispatch: # Allow manual trigger from GitHub Actions tab
+
+jobs:
+  publish-tauri:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: bun install
+
+      - name: Build and Publish Release
+        uses: tauri-apps/tauri-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'CS2 Demo Voice Opener v__VERSION__'
+          releaseBody: 'Installers for CS2 Demo Voice Opener. Download the .msi or .exe below.'
+          releaseDraft: true
+          prerelease: false
