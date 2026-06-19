@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CS2 Demo Voice Opener</title>
+  </head>
+
+  <body>
+    <!-- Header -->
+    <header>
+      <div class="title-container">
+        <h1>CS2 DEMO OPENER</h1>
+        <p>Start replays with custom voice bitmasks</p>
+      </div>
+      <button class="settings-btn" id="open-settings-btn" title="Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Main Section -->
+    <main>
+      <!-- Drag & Drop Zone -->
+      <div id="dropzone" class="dropzone glass-panel">
+        <div class="dropzone-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+        </div>
+        <h3>Drop CS2 Demo File</h3>
+        <p>Drag your .dem file here to begin parsing</p>
+      </div>
+
+      <!-- Loaded Demo Details Panel (hidden by default) -->
+      <div id="loaded-demo-panel" class="loaded-demo-panel glass-panel" style="display: none; padding: 15px;">
+        <div class="demo-file-badge">
+          <div class="demo-info">
+            <span class="demo-name" id="demo-name-label">match730_003...dem</span>
+            <span class="demo-status" id="demo-status-label">Loaded & Parsed</span>
+          </div>
+          <button class="btn-remove" id="remove-demo-btn" title="Remove Demo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Interactive Player Identity Select -->
+        <div class="player-selector-box">
+          <span class="player-selector-label">Who are you in this match?</span>
+          <div class="custom-select-container">
+            <button class="player-select-btn" id="player-select-btn">
+              <span id="player-select-label">Select player...</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div class="player-dropdown" id="player-dropdown">
+              <!-- Dynamically populated options -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Voice Selector Card Grid -->
+      <div class="voice-selection">
+        <div class="voice-card active" data-mode="all">
+          <h4>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+            All Voices
+          </h4>
+          <p>Hear both your teammates and your opponents in the demo.</p>
+        </div>
+
+        <div class="voice-card" data-mode="team">
+          <h4>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            Only Team
+          </h4>
+          <p>Hear only your team's voice communications.</p>
+        </div>
+
+        <div class="voice-card" data-mode="opponent">
+          <h4>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            Only Enemy
+          </h4>
+          <p>Hear only your opponents' voice communications.</p>
+        </div>
+
+        <div class="voice-card" data-mode="none">
+          <h4>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <line x1="23" y1="9" x2="17" y2="15"></line>
+              <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+            No Voices
+          </h4>
+          <p>Mute all voice communications in the demo.</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer Action -->
+    <footer class="launch-container">
+      <button class="launch-btn" id="launch-btn" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        <span>LAUNCH DEMO</span>
+      </button>
+    </footer>
+
+    <!-- Settings Panel (Slide-up overlay) -->
+    <div class="settings-overlay glass-panel" id="settings-overlay">
+      <div>
+        <div class="settings-header">
+          <h2>SETTINGS</h2>
+          <button class="close-btn" id="close-settings-btn">&times;</button>
+        </div>
+
+        <div class="settings-body">
+          <div class="settings-group">
+            <label>CS2 Game Path</label>
+            <div class="settings-input-row">
+              <input type="text" class="settings-input" id="cs2-path-input" placeholder="Auto-detecting CS2 path..." />
+            </div>
+            <p style="font-size: 0.75rem; color: #64748b; margin: 4px 0 0 0;">
+              Must point to the folder containing 'bin' and 'csgo' (e.g. '...\common\Counter-Strike Global Offensive\game')
+            </p>
+          </div>
+
+          <div class="settings-group">
+            <label>Local Steam Accounts</label>
+            <div class="steam-accounts-list" id="steam-accounts-list">
+              <!-- Dynamically populated with local Steam profiles -->
+            </div>
+            <p style="font-size: 0.75rem; color: #64748b; margin: 4px 0 0 0;">
+              These profiles will be automatically matched to the player list inside dropped demos.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-footer">
+        <button class="btn-secondary" id="save-settings-btn">Save & Close</button>
+      </div>
+    </div>
+
+    <!-- Script loading via absolute Vite path -->
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
