@@ -3,19 +3,64 @@
 :root {
   font-family: 'Outfit', sans-serif;
   font-size: 14px;
-  color: #e2e8f0;
-  background-color: #0d0e12;
+  color: var(--text-main);
+  background-color: var(--bg-main);
   margin: 0;
   padding: 0;
   overflow: hidden;
   user-select: none;
+
+  /* Theme Colors (Grayish / Monochrome Theme) */
+  --bg-main: #0e1012;
+  --bg-top-gradient: #202226;
+  --bg-glass: rgba(24, 26, 30, 0.75);
+  --bg-active-card: rgba(255, 255, 255, 0.03);
+  --bg-dropdown: #17191d;
+  
+  --border-color: rgba(255, 255, 255, 0.04);
+  --border-active: rgba(255, 255, 255, 0.2);
+  --border-active-hover: rgba(255, 255, 255, 0.35);
+  --border-dropzone: rgba(255, 255, 255, 0.1);
+
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --text-dark: #6b7280;
+  
+  /* Primary Accent: Silver / White-Gray */
+  --accent-primary: #9ca3af;
+  --accent-secondary: #e5e7eb;
+  --accent-dark: #4b5563;
+  
+  --gradient-accent: linear-gradient(90deg, #374151, #4b5563);
+  --gradient-accent-hover: linear-gradient(90deg, #4b5563, #6b7280);
+  --gradient-title: linear-gradient(90deg, #f3f4f6, #9ca3af);
+  
+  --shadow-accent: rgba(255, 255, 255, 0.03);
+  --shadow-accent-hover: rgba(255, 255, 255, 0.07);
+  --shadow-panel: rgba(0, 0, 0, 0.7);
+
+  /* Team Specific (Keep CS2 Vibe) */
+  --ct-color: #60a5fa;
+  --ct-border: rgba(96, 165, 250, 0.3);
+  --ct-bg: rgba(96, 165, 250, 0.12);
+  
+  --t-color: #fbbf24;
+  --t-border: rgba(251, 191, 36, 0.3);
+  --t-bg: rgba(251, 191, 36, 0.12);
+  
+  --self-color: #34d399;
+  --self-border: rgba(52, 211, 153, 0.3);
+  --self-bg: rgba(52, 211, 153, 0.12);
+
+  --remove-color: #f87171;
+  --remove-bg: rgba(248, 113, 113, 0.1);
 }
 
 body {
   margin: 0;
   padding: 20px;
   height: calc(100vh - 40px);
-  background: radial-gradient(circle at 50% 0%, #1e1e24 0%, #0d0e12 80%);
+  background: radial-gradient(circle at 50% 0%, var(--bg-top-gradient) 0%, var(--bg-main) 80%);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -23,12 +68,12 @@ body {
 
 /* Glassmorphism utility */
 .glass-panel {
-  background: rgba(22, 24, 30, 0.7);
+  background: var(--bg-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px 0 var(--shadow-panel);
 }
 
 /* Header */
@@ -44,21 +89,21 @@ header {
   font-weight: 700;
   letter-spacing: 1px;
   margin: 0;
-  background: linear-gradient(90deg, #f5a623, #f8c146);
+  background: var(--gradient-title);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 2px 10px rgba(245, 166, 35, 0.15);
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.05);
 }
 
 .title-container p {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin: 2px 0 0 0;
 }
 
 .settings-btn {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
   color: #94a3b8;
   padding: 8px;
   border-radius: 50%;
@@ -70,9 +115,9 @@ header {
 }
 
 .settings-btn:hover {
-  background: rgba(245, 166, 35, 0.1);
-  border-color: rgba(245, 166, 35, 0.3);
-  color: #f5a623;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-active);
+  color: var(--accent-secondary);
   transform: rotate(45deg);
 }
 
@@ -88,7 +133,7 @@ main {
 /* Dropzone styling */
 .dropzone {
   flex-grow: 1;
-  border: 2px dashed rgba(245, 166, 35, 0.2);
+  border: 2px dashed var(--border-dropzone);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -98,13 +143,13 @@ main {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 20px;
   text-align: center;
-  background: rgba(245, 166, 35, 0.01);
+  background: rgba(255, 255, 255, 0.01);
 }
 
 .dropzone.dragover {
-  border-color: #f5a623;
-  background: rgba(245, 166, 35, 0.05);
-  box-shadow: 0 0 20px rgba(245, 166, 35, 0.15);
+  border-color: var(--accent-primary);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.05);
   transform: scale(1.01);
 }
 
@@ -112,7 +157,7 @@ main {
   font-size: 3rem;
   margin-bottom: 12px;
   transition: transform 0.3s ease;
-  color: #f5a623;
+  color: var(--accent-primary);
 }
 
 .dropzone:hover .dropzone-icon {
@@ -123,13 +168,13 @@ main {
   margin: 0 0 5px 0;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #f8c146;
+  color: var(--accent-secondary);
 }
 
 .dropzone p {
   margin: 0;
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 /* Voice Modes Selector */
@@ -142,7 +187,7 @@ main {
 .voice-card {
   padding: 12px;
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.25s ease;
@@ -157,16 +202,16 @@ main {
 }
 
 .voice-card.active {
-  background: rgba(245, 166, 35, 0.06);
-  border-color: rgba(245, 166, 35, 0.4);
-  box-shadow: 0 0 15px rgba(245, 166, 35, 0.05);
+  background: var(--bg-active-card);
+  border-color: var(--border-active);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.02);
 }
 
 .voice-card h4 {
   margin: 0 0 4px 0;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #f8c146;
+  color: var(--accent-secondary);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -175,7 +220,7 @@ main {
 .voice-card p {
   margin: 0;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--text-muted);
   line-height: 1.2;
 }
 
@@ -185,7 +230,7 @@ main {
   flex-direction: column;
   gap: 10px;
   position: relative;
-  z-index: 10; /* Stack dropdown above voice cards below it */
+  z-index: 10;
 }
 
 .demo-file-badge {
@@ -193,8 +238,8 @@ main {
   justify-content: space-between;
   align-items: center;
   padding: 10px 14px;
-  background: rgba(245, 166, 35, 0.04);
-  border: 1px solid rgba(245, 166, 35, 0.15);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
 }
 
@@ -205,21 +250,21 @@ main {
 
 .demo-name {
   font-weight: 500;
-  color: #f8c146;
+  color: var(--accent-secondary);
   font-size: 0.9rem;
   word-break: break-all;
 }
 
 .demo-status {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
 .btn-remove {
   background: none;
   border: none;
-  color: #ef4444;
+  color: var(--remove-color);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -230,7 +275,7 @@ main {
 }
 
 .btn-remove:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--remove-bg);
 }
 
 /* Player Selection Box */
@@ -242,7 +287,7 @@ main {
 
 .player-selector-label {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
@@ -254,9 +299,9 @@ main {
   width: 100%;
   padding: 10px 14px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: #e2e8f0;
+  color: var(--text-main);
   font-size: 0.9rem;
   font-family: inherit;
   text-align: left;
@@ -277,7 +322,7 @@ main {
   top: 100%;
   left: 0;
   right: 0;
-  background: #13151b;
+  background: var(--bg-dropdown);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   max-height: 200px;
@@ -297,17 +342,17 @@ main {
   font-weight: 700;
   padding: 6px 12px;
   background: rgba(255, 255, 255, 0.02);
-  color: #64748b;
+  color: var(--text-muted);
   letter-spacing: 0.5px;
 }
 
 .team-ct {
-  border-left: 3px solid #4b6b94;
+  border-left: 3px solid var(--ct-color);
   color: #8da1bc;
 }
 
 .team-t {
-  border-left: 3px solid #de9b35;
+  border-left: 3px solid var(--t-color);
   color: #e2b36e;
 }
 
@@ -326,7 +371,7 @@ main {
 }
 
 .player-option.selected {
-  background: rgba(245, 166, 35, 0.08);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .player-option-name {
@@ -335,7 +380,7 @@ main {
 
 .player-option-id {
   font-size: 0.7rem;
-  color: #475569;
+  color: var(--text-dark);
 }
 
 .tag-badge {
@@ -346,21 +391,21 @@ main {
 }
 
 .tag-badge.ct {
-  background: rgba(75, 107, 148, 0.15);
-  color: #9ab4d8;
-  border: 1px solid rgba(75, 107, 148, 0.3);
+  background: var(--ct-bg);
+  color: var(--ct-color);
+  border: 1px solid var(--ct-border);
 }
 
 .tag-badge.t {
-  background: rgba(222, 155, 53, 0.15);
-  color: #f5c276;
-  border: 1px solid rgba(222, 155, 53, 0.3);
+  background: var(--t-bg);
+  color: var(--t-color);
+  border: 1px solid var(--t-border);
 }
 
 .tag-badge.self {
-  background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  background: var(--self-bg);
+  color: var(--self-color);
+  border: 1px solid var(--self-border);
   margin-left: 4px;
 }
 
@@ -383,20 +428,20 @@ main {
   justify-content: center;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(90deg, #d97706, #f5a623);
-  color: #0d0e12;
-  box-shadow: 0 4px 15px rgba(245, 166, 35, 0.3);
+  background: var(--gradient-accent);
+  color: #ffffff;
+  box-shadow: 0 4px 15px var(--shadow-accent);
 }
 
 .launch-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(245, 166, 35, 0.45);
-  background: linear-gradient(90deg, #f5a623, #f8c146);
+  box-shadow: 0 6px 20px var(--shadow-accent-hover);
+  background: var(--gradient-accent-hover);
 }
 
 .launch-btn:active:not(:disabled) {
   transform: translateY(1px);
-  box-shadow: 0 2px 10px rgba(245, 166, 35, 0.2);
+  box-shadow: 0 2px 10px var(--shadow-accent);
 }
 
 .launch-btn:disabled {
@@ -414,7 +459,7 @@ main {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(13, 14, 18, 0.95);
+  background: rgba(14, 16, 18, 0.96);
   z-index: 200;
   padding: 25px;
   display: flex;
@@ -439,7 +484,7 @@ main {
 .settings-header h2 {
   margin: 0;
   font-size: 1.3rem;
-  color: #f5a623;
+  color: var(--accent-primary);
 }
 
 .close-btn {
@@ -451,7 +496,7 @@ main {
 }
 
 .close-btn:hover {
-  color: #f5a623;
+  color: var(--accent-primary);
 }
 
 .settings-body {
@@ -470,7 +515,7 @@ main {
 .settings-group label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -484,22 +529,22 @@ main {
   flex-grow: 1;
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
-  color: #e2e8f0;
+  color: var(--text-main);
   font-family: inherit;
   font-size: 0.85rem;
   outline: none;
 }
 
 .settings-input:focus {
-  border-color: rgba(245, 166, 35, 0.4);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .btn-secondary {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #e2e8f0;
+  color: var(--text-main);
   padding: 8px 12px;
   border-radius: 6px;
   font-family: inherit;
@@ -532,7 +577,7 @@ main {
 
 .steam-account-item .steam-id {
   font-size: 0.75rem;
-  color: #475569;
+  color: var(--text-dark);
 }
 
 .settings-footer {
@@ -563,5 +608,5 @@ main {
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(245, 166, 35, 0.3);
+  background: rgba(255, 255, 255, 0.25);
 }
