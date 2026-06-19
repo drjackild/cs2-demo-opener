@@ -1,3 +1,5 @@
+<img src="./screenshots/icon.png" alt="CS2 Demo Voice Opener Icon" width="128" height="128">
+
 # CS2 Demo Voice Opener
 
 A desktop application for Counter-Strike 2 players and analysts to isolate and listen to specific team or player voice communications in match demos. Built with **Tauri v2**, **Rust**, and HTML/CSS/JS.
