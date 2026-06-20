@@ -26,6 +26,7 @@ winreg = "0.52"
 source2-demo = { version = "0.5", features = ["cs2"] }
 rfd = "0.15"
 ureq = { version = "2.10", features = ["native-tls"] }
+zstd = "0.13"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

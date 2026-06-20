@@ -23,6 +23,12 @@ pub struct PlayerInfo {
     pub slot: u32,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ParseResult {
+    pub players: Vec<PlayerInfo>,
+    pub uncompressed_path: String,
+}
+
 // Global thread-safe storage for parsed players since tauri's observer registration is type-based
 static PARSED_PLAYERS: Mutex<Option<HashMap<String, PlayerInfo>>> = Mutex::new(None);
 
@@ -181,11 +187,14 @@ fn detect_cs2_path() -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
-fn parse_demo_players(demo_path: String) -> Result<Vec<PlayerInfo>, String> {
+fn parse_demo_players(demo_path: String) -> Result<ParseResult, String> {
     println!(
         "[Rust Backend] parse_demo_players called for path: {}",
         demo_path
     );
+    let resolved_path = prepare_demo_path(&demo_path)?;
+    let resolved_path_clone = resolved_path.clone();
+
     // Run the parser in a separate thread with a larger stack size to prevent stack overflows
     // (especially common in Windows debug builds due to deep parser recursion).
     let handle = std::thread::Builder::new()
@@ -198,7 +207,7 @@ fn parse_demo_players(demo_path: String) -> Result<Vec<PlayerInfo>, String> {
             }
 
             let file =
-                File::open(&demo_path).map_err(|e| format!("Failed to open demo file: {}", e))?;
+                File::open(&resolved_path_clone).map_err(|e| format!("Failed to open demo file: {}", e))?;
             let input = BufReader::new(file);
             let mut parser = Parser::from_reader(input)
                 .map_err(|e| format!("Failed to create parser: {}", e))?;
@@ -225,7 +234,10 @@ fn parse_demo_players(demo_path: String) -> Result<Vec<PlayerInfo>, String> {
                             player.slot, player.name, player.steam_id, player.team
                         );
                     }
-                    return Ok(list);
+                    return Ok(ParseResult {
+                        players: list,
+                        uncompressed_path: resolved_path_clone.to_string_lossy().into_owned(),
+                    });
                 }
             }
             Err("Failed to parse players from demo".to_string())
@@ -257,13 +269,54 @@ fn copy_file_with_retry(source: &Path, target: &Path) -> std::io::Result<u64> {
         .unwrap_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "Unknown copy error")))
 }
 
+fn decompress_zst_to_temp(zst_path: &Path) -> Result<std::path::PathBuf, String> {
+    let temp_dir = std::env::temp_dir().join("cs2_demo_opener");
+    std::fs::create_dir_all(&temp_dir)
+        .map_err(|e| format!("Failed to create temp directory: {}", e))?;
+
+    let file_name = zst_path
+        .file_name()
+        .ok_or_else(|| "Invalid filename".to_string())?
+        .to_string_lossy();
+
+    let target_name = if file_name.to_lowercase().ends_with(".dem.zst") {
+        file_name[..file_name.len() - 4].to_string()
+    } else if file_name.to_lowercase().ends_with(".zst") {
+        format!("{}.dem", &file_name[..file_name.len() - 4])
+    } else {
+        return Err("File is not a .zst file".to_string());
+    };
+
+    let target_path = temp_dir.join(target_name);
+
+    let zst_file = File::open(zst_path).map_err(|e| format!("Failed to open zst file: {}", e))?;
+    let mut decoder = zstd::stream::read::Decoder::new(zst_file)
+        .map_err(|e| format!("Failed to initialize zstd decoder: {}", e))?;
+
+    let mut target_file = File::create(&target_path)
+        .map_err(|e| format!("Failed to create decompressed file at '{}': {}", target_path.display(), e))?;
+
+    std::io::copy(&mut decoder, &mut target_file)
+        .map_err(|e| format!("Failed to decompress zst to '{}': {}", target_path.display(), e))?;
+
+    Ok(target_path)
+}
+
+fn prepare_demo_path(demo_path: &str) -> Result<std::path::PathBuf, String> {
+    let path = Path::new(demo_path);
+    if demo_path.to_lowercase().ends_with(".zst") {
+        decompress_zst_to_temp(path)
+    } else {
+        Ok(path.to_path_buf())
+    }
+}
+
+
 fn calculate_voice_masks(
     voice_mode: &str,
-    self_steam_id: &str,
+    self_team: u8,
     players: &[PlayerInfo],
 ) -> Result<(i32, i32, Vec<PlayerInfo>), String> {
-    let self_player = players.iter().find(|p| p.steam_id == self_steam_id);
-
     let mut mask_low: i32 = 0;
     let mut mask_high: i32 = 0;
     let mut unmuted_players = Vec::new();
@@ -287,31 +340,19 @@ fn calculate_voice_masks(
             mask_high = 0;
         }
         "team" => {
-            if let Some(me) = self_player {
-                for p in players {
-                    if p.team == me.team {
-                        set_bit(p.slot, &mut mask_low, &mut mask_high);
-                        unmuted_players.push(p.clone());
-                    }
+            for p in players {
+                if p.team == self_team {
+                    set_bit(p.slot, &mut mask_low, &mut mask_high);
+                    unmuted_players.push(p.clone());
                 }
-            } else {
-                mask_low = -1;
-                mask_high = -1;
-                unmuted_players = players.to_vec();
             }
         }
         "opponent" => {
-            if let Some(me) = self_player {
-                for p in players {
-                    if p.team != me.team {
-                        set_bit(p.slot, &mut mask_low, &mut mask_high);
-                        unmuted_players.push(p.clone());
-                    }
+            for p in players {
+                if p.team != self_team {
+                    set_bit(p.slot, &mut mask_low, &mut mask_high);
+                    unmuted_players.push(p.clone());
                 }
-            } else {
-                mask_low = -1;
-                mask_high = -1;
-                unmuted_players = players.to_vec();
             }
         }
         _ => return Err("Invalid voice mode".to_string()),
@@ -324,7 +365,7 @@ fn write_voice_demo_cfg(
     cs2_game_dir: &Path,
     demo_filename: &str,
     voice_mode: &str,
-    self_player: Option<&PlayerInfo>,
+    self_team: u8,
     mask_low: i32,
     mask_high: i32,
     unmuted_players: &[PlayerInfo],
@@ -337,14 +378,12 @@ fn write_voice_demo_cfg(
     let mut cfg_file =
         File::create(&cfg_path).map_err(|e| format!("Failed to create cfg file: {}", e))?;
 
-    let self_player_info = match self_player {
-        Some(p) => format!(
-            "{} (Slot {}, Team {})",
-            p.name.replace('"', ""),
-            p.slot,
-            p.team
-        ),
-        None => "None Selected (Fallback: Hearing All)".to_string(),
+    let self_team_info = match self_team {
+        2 => "Terrorists (T)",
+        3 => "Counter-Terrorists (CT)",
+        1 => "Spectators (Spec)",
+        0 => "Unassigned",
+        _ => "Spectators / Others",
     };
 
     let mut unmuted_players_text = String::new();
@@ -374,7 +413,7 @@ echo "=================================================="
 echo "   CS2 DEMO VOICE OPENER - CONFIG LOADED"
 echo "=================================================="
 echo " Voice Mode: {}"
-echo " Profile (Me): {}"
+echo " Team (Me): {}"
 echo "--------------------------------------------------"
 echo " Unmuted Players:"
 {}echo "=================================================="
@@ -384,7 +423,7 @@ tv_listen_voice_indices_h {}
 playdemo "demos/{}"
 "#,
         voice_mode.to_uppercase(),
-        self_player_info,
+        self_team_info,
         unmuted_players_text,
         mask_low,
         mask_high,
@@ -439,11 +478,12 @@ fn execute_cs2_launch(cs2_game_dir: &Path) -> Result<(), String> {
 fn launch_cs2_demo(
     demo_path: String,
     voice_mode: String,
-    self_steam_id: String,
+    self_team: u8,
     cs2_path: String,
     players: Vec<PlayerInfo>,
 ) -> Result<String, String> {
-    let demo_file_path = Path::new(&demo_path);
+    let resolved_path = prepare_demo_path(&demo_path)?;
+    let demo_file_path = Path::new(&resolved_path);
     if !demo_file_path.exists() {
         return Err("Demo file does not exist".to_string());
     }
@@ -487,10 +527,9 @@ fn launch_cs2_demo(
         })?;
     }
 
-    // 2. Identify self player and compute voice masks
-    let self_player = players.iter().find(|p| p.steam_id == self_steam_id);
+    // 2. Compute voice masks
     let (mask_low, mask_high, unmuted_players) =
-        calculate_voice_masks(&voice_mode, &self_steam_id, &players)?;
+        calculate_voice_masks(&voice_mode, self_team, &players)?;
 
     // 3. Write cfg file inside game/csgo/cfg/voice_demo.cfg
     let filename_str = filename.to_string_lossy();
@@ -498,7 +537,7 @@ fn launch_cs2_demo(
         cs2_game_dir,
         &filename_str,
         &voice_mode,
-        self_player,
+        self_team,
         mask_low,
         mask_high,
         &unmuted_players,
@@ -546,7 +585,7 @@ fn resolve_steam_name(steam_id: String) -> Result<String, String> {
 #[tauri::command]
 fn select_demo_file() -> Result<Option<String>, String> {
     let file = rfd::FileDialog::new()
-        .add_filter("CS2 Demo", &["dem"])
+        .add_filter("CS2 Demo (.dem, .zst)", &["dem", "zst"])
         .pick_file();
 
     Ok(file.map(|p| p.to_string_lossy().into_owned()))
@@ -576,7 +615,7 @@ mod tests {
         name: &'static str,
         players: Vec<PlayerInfo>,
         voice_mode: &'static str,
-        self_steam_id: &'static str,
+        self_team: u8,
         expected_mask_low: i32,
         expected_mask_high: i32,
         expected_unmuted_count: usize,
@@ -650,7 +689,7 @@ mod tests {
                     },
                 ],
                 voice_mode: "all",
-                self_steam_id: "1",
+                self_team: 2,
                 expected_mask_low: -1,
                 expected_mask_high: -1,
                 expected_unmuted_count: 10,
@@ -672,7 +711,7 @@ mod tests {
                     },
                 ],
                 voice_mode: "none",
-                self_steam_id: "1",
+                self_team: 2,
                 expected_mask_low: 0,
                 expected_mask_high: 0,
                 expected_unmuted_count: 0,
@@ -744,7 +783,7 @@ mod tests {
                     },
                 ],
                 voice_mode: "team",
-                self_steam_id: "1", // T1 (Team 2)
+                self_team: 2, // Team 2 (T)
                 // Expected slots: 0, 1, 2, 3 (low mask) and 32 (high mask)
                 // expected_mask_low: (1<<0) | (1<<1) | (1<<2) | (1<<3) = 1 + 2 + 4 + 8 = 15
                 // expected_mask_high: 1<<(32-32) = 1
@@ -819,7 +858,7 @@ mod tests {
                     },
                 ],
                 voice_mode: "opponent",
-                self_steam_id: "1", // T1 (Team 2) -> hears Team 3 (CT)
+                self_team: 2, // Team 2 (T) -> hears Team 3 (CT)
                 // Expected CT slots: 4, 5, 6, 7 (low mask) and 33 (high mask)
                 // expected_mask_low: (1<<4) | (1<<5) | (1<<6) | (1<<7) = 16 + 32 + 64 + 128 = 240
                 // expected_mask_high: 1<<(33-32) = 2
@@ -862,7 +901,7 @@ mod tests {
                     },
                 ],
                 voice_mode: "team",
-                self_steam_id: "1",
+                self_team: 2,
                 // Expected slots: 0, 31 (low mask) and 32, 63 (high mask)
                 // expected_mask_low: (1<<0) | (1<<31) = 1 | 0x80000000 = -2147483647 (signed i32)
                 // expected_mask_high: (1<<0) | (1<<31) = -2147483647
@@ -937,7 +976,7 @@ mod tests {
                     },
                 ],
                 voice_mode: "team",
-                self_steam_id: "8", // CT1 (Team 3)
+                self_team: 3, // Team 3 (CT)
                 // Expected CT slots: 5, 6, 7
                 // expected_mask_low: (1<<5) | (1<<6) | (1<<7) = 32 + 64 + 128 = 224
                 expected_mask_low: 224,
@@ -973,7 +1012,7 @@ mod tests {
                     }, // Unassigned
                 ],
                 voice_mode: "team",
-                self_steam_id: "1",
+                self_team: 2,
                 // Only Team 2 slots should be unmuted (0, 1)
                 // expected_mask_low: (1<<0) | (1<<1) = 3
                 expected_mask_low: 3,
@@ -1015,7 +1054,7 @@ mod tests {
                     }, // Non-sequential gap, high mask
                 ],
                 voice_mode: "team",
-                self_steam_id: "1", // T_Sparse1 (Team 2)
+                self_team: 2, // Team 2 (T)
                 // Expected unmuted slots: 0, 12 (low mask) and 33 (high mask)
                 // expected_mask_low: (1<<0) | (1<<12) = 1 + 4096 = 4097
                 // expected_mask_high: 1<<(33-32) = 1<<1 = 2
@@ -1028,7 +1067,7 @@ mod tests {
         for scenario in scenarios {
             let result = calculate_voice_masks(
                 scenario.voice_mode,
-                scenario.self_steam_id,
+                scenario.self_team,
                 &scenario.players,
             );
             assert!(

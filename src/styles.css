@@ -340,8 +340,7 @@ main {
 .team-header {
   font-size: 0.75rem;
   font-weight: 700;
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.02);
+  padding: 10px 12px 4px 12px;
   color: var(--text-muted);
   letter-spacing: 0.5px;
 }
@@ -356,31 +355,45 @@ main {
   color: #e2b36e;
 }
 
-.player-option {
-  padding: 8px 12px;
+.team-other {
+  border-left: 3px solid var(--text-muted);
+  color: var(--text-muted);
+}
+
+.team-select-section {
   cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: all 0.2s ease;
+}
+
+.team-select-section:last-child {
+  border-bottom: none;
+}
+
+.team-select-section:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.team-select-section.selected {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.team-players-list {
+  padding: 4px 12px 10px 12px;
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.player-entry {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  display: inline-flex;
   align-items: center;
-  font-size: 0.85rem;
-  transition: background 0.2s;
-}
-
-.player-option:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.player-option.selected {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.player-option-name {
-  font-weight: 500;
-}
-
-.player-option-id {
-  font-size: 0.7rem;
-  color: var(--text-dark);
 }
 
 .tag-badge {
@@ -400,6 +413,12 @@ main {
   background: var(--t-bg);
   color: var(--t-color);
   border: 1px solid var(--t-border);
+}
+
+.tag-badge.other {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .tag-badge.self {
@@ -428,29 +447,57 @@ main {
   justify-content: center;
   align-items: center;
   gap: 8px;
-  background: var(--gradient-accent);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #ffffff;
-  box-shadow: 0 4px 15px var(--shadow-accent);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.15);
 }
 
 .launch-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px var(--shadow-accent-hover);
-  background: var(--gradient-accent-hover);
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25);
 }
 
 .launch-btn:active:not(:disabled) {
   transform: translateY(1px);
-  box-shadow: 0 2px 10px var(--shadow-accent);
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.15);
 }
 
 .launch-btn:disabled {
-  background: #1e293b;
-  color: #475569;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: rgba(255, 255, 255, 0.4);
   cursor: not-allowed;
   box-shadow: none;
+  opacity: 0.35;
   border: 1px solid rgba(255, 255, 255, 0.02);
 }
+
+.launch-status-msg {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  color: #10b981;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 0;
+  overflow: hidden;
+}
+
+.launch-status-msg.show {
+  opacity: 1;
+  transform: translateY(0);
+  height: auto;
+  overflow: visible;
+  margin-bottom: 12px;
+}
+
+
 
 /* Settings Overlay */
 .settings-overlay {
@@ -609,4 +656,45 @@ main {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.25);
+}
+
+/* Selected team players lineup preview */
+.selected-team-players-preview {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  animation: fadeIn 0.3s ease;
+}
+
+.player-preview-badge {
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.player-preview-badge.ct {
+  background: var(--ct-bg);
+  color: var(--ct-color);
+  border: 1px solid var(--ct-border);
+}
+
+.player-preview-badge.t {
+  background: var(--t-bg);
+  color: var(--t-color);
+  border: 1px solid var(--t-border);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
 }

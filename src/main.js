@@ -7,7 +7,7 @@ let localSteamUsers = [];
 let selectedVoiceMode = "all";
 let loadedDemoPath = "";
 let demoPlayers = [];
-let selectedPlayerSteamId = "";
+let selectedTeam = null;
 
 // DOM Elements
 let dropzoneEl;
@@ -18,6 +18,7 @@ let removeDemoBtnEl;
 let playerSelectBtnEl;
 let playerSelectLabelEl;
 let playerDropdownEl;
+let launchStatusMsgEl;
 let launchBtnEl;
 let openSettingsBtnEl;
 let closeSettingsBtnEl;
@@ -26,6 +27,7 @@ let settingsOverlayEl;
 let cs2PathInputEl;
 let steamAccountsListEl;
 let voiceCards;
+let selectedTeamPlayersPreviewEl;
 
 window.addEventListener("DOMContentLoaded", async () => {
   // Query Elements
@@ -37,7 +39,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   playerSelectBtnEl = document.getElementById("player-select-btn");
   playerSelectLabelEl = document.getElementById("player-select-label");
   playerDropdownEl = document.getElementById("player-dropdown");
+  selectedTeamPlayersPreviewEl = document.getElementById("selected-team-players-preview");
   launchBtnEl = document.getElementById("launch-btn");
+  launchStatusMsgEl = document.getElementById("launch-status-msg");
   openSettingsBtnEl = document.getElementById("open-settings-btn");
   closeSettingsBtnEl = document.getElementById("close-settings-btn");
   saveSettingsBtnEl = document.getElementById("save-settings-btn");
@@ -154,10 +158,10 @@ function setupTauriDragDrop() {
 
     if (paths && paths.length > 0) {
       const path = paths[0];
-      if (path.toLowerCase().endsWith(".dem")) {
+      if (path.toLowerCase().endsWith(".dem") || path.toLowerCase().endsWith(".zst")) {
         await loadDemo(path);
       } else {
-        alert("Please drop a valid .dem file!");
+        alert("Please drop a valid .dem or .zst file!");
       }
     }
   });
@@ -177,7 +181,9 @@ async function loadDemo(path) {
   launchBtnEl.disabled = true;
 
   try {
-    demoPlayers = await invoke("parse_demo_players", { demoPath: path });
+    const result = await invoke("parse_demo_players", { demoPath: path });
+    demoPlayers = result.players;
+    loadedDemoPath = result.uncompressed_path;
     demoStatusLabelEl.textContent = `Demo loaded (${demoPlayers.length} players found)`;
 
     // Auto-select based on matching local SteamIDs
@@ -190,8 +196,7 @@ async function loadDemo(path) {
       }
     }
 
-    renderPlayerSelector(matchedUser);
-    launchBtnEl.disabled = false;
+    renderTeamSelector(matchedUser);
 
     // Resolve streamer mode names in the background
     resolveStreamerNames();
@@ -203,80 +208,124 @@ async function loadDemo(path) {
   }
 }
 
-function renderPlayerSelector(matchedUser) {
+function renderTeamSelector(matchedUser) {
   playerDropdownEl.innerHTML = "";
 
   // Group players by team: CT (team 3) vs T (team 2)
   const ctPlayers = demoPlayers.filter(p => p.team === 3);
   const tPlayers = demoPlayers.filter(p => p.team === 2);
-  const otherPlayers = demoPlayers.filter(p => p.team !== 2 && p.team !== 3);
 
-  const addTeamSection = (label, playersList, className) => {
-    if (playersList.length === 0) return;
+  const addTeamSection = (label, playersList, className, teamId) => {
+    const section = document.createElement("div");
+    section.className = "team-select-section";
+    section.dataset.teamId = teamId;
+
     const header = document.createElement("div");
     header.className = `team-header ${className}`;
     header.textContent = label;
-    playerDropdownEl.appendChild(header);
+    section.appendChild(header);
 
-    playersList.forEach(player => {
-      const opt = document.createElement("div");
-      opt.className = "player-option";
-      opt.dataset.steamId = player.steam_id;
-      if (matchedUser && player.steam_id === matchedUser.steam_id) {
-        opt.classList.add("selected");
-      }
+    const playersListContainer = document.createElement("div");
+    playersListContainer.className = "team-players-list";
 
-      const isLocal = localSteamUsers.some(u => u.steam_id === player.steam_id.toString());
-      const selfTag = isLocal ? `<span class="tag-badge self">Local</span>` : "";
+    if (playersList.length === 0) {
+      const emptyMsg = document.createElement("div");
+      emptyMsg.className = "player-entry";
+      emptyMsg.style.fontStyle = "italic";
+      emptyMsg.textContent = "No players";
+      playersListContainer.appendChild(emptyMsg);
+    } else {
+      playersList.forEach(player => {
+        const pEntry = document.createElement("div");
+        pEntry.className = "player-entry";
+        pEntry.dataset.steamId = player.steam_id;
 
-      opt.innerHTML = `
-        <span class="player-option-name">${player.name}${selfTag}</span>
-        <span class="player-option-id">Slot ${player.slot}</span>
-      `;
+        const isLocal = localSteamUsers.some(u => u.steam_id === player.steam_id.toString());
+        const selfTag = isLocal ? `<span class="tag-badge self">Local</span>` : "";
 
-      opt.addEventListener("click", () => {
-        selectPlayer(player);
+        pEntry.innerHTML = `${player.name}${selfTag}`;
+        playersListContainer.appendChild(pEntry);
       });
-      playerDropdownEl.appendChild(opt);
+    }
+
+    section.appendChild(playersListContainer);
+
+    section.addEventListener("click", (e) => {
+      e.stopPropagation();
+      selectTeam(teamId);
     });
+
+    playerDropdownEl.appendChild(section);
   };
 
-  addTeamSection("COUNTER-TERRORISTS", ctPlayers, "team-ct");
-  addTeamSection("TERRORISTS", tPlayers, "team-t");
-  addTeamSection("SPECTATORS & OTHERS", otherPlayers, "team-other");
+  addTeamSection("COUNTER-TERRORISTS", ctPlayers, "team-ct", 3);
+  addTeamSection("TERRORISTS", tPlayers, "team-t", 2);
 
-  if (matchedUser) {
-    selectPlayer(matchedUser);
+  if (matchedUser && (matchedUser.team === 2 || matchedUser.team === 3)) {
+    selectTeam(matchedUser.team);
   } else {
-    selectedPlayerSteamId = "";
-    playerSelectLabelEl.innerHTML = `<span style="color: #e5a93b; font-weight: 500;">Select profile... (none matched)</span>`;
+    selectTeam(null);
   }
 }
 
-function selectPlayer(player) {
-  selectedPlayerSteamId = player.steam_id.toString();
+function selectTeam(teamId) {
+  selectedTeam = teamId;
 
   // Update visual selected class inside the options list
-  const options = playerDropdownEl.querySelectorAll(".player-option");
-  options.forEach(opt => {
-    if (opt.dataset.steamId === selectedPlayerSteamId) {
-      opt.classList.add("selected");
+  const sections = playerDropdownEl.querySelectorAll(".team-select-section");
+  sections.forEach(section => {
+    const secTeamId = parseInt(section.dataset.teamId, 10);
+    if (selectedTeam !== null && selectedTeam === secTeamId) {
+      section.classList.add("selected");
     } else {
-      opt.classList.remove("selected");
+      section.classList.remove("selected");
     }
   });
 
   playerDropdownEl.classList.remove("open");
 
-  const teamName = player.team === 3 ? "CT" : player.team === 2 ? "T" : "Spec";
-  const badgeClass = player.team === 3 ? "ct" : player.team === 2 ? "t" : "other";
+  if (selectedTeam === null) {
+    playerSelectLabelEl.innerHTML = `<span style="color: #e5a93b; font-weight: 500;">Select team... (none matched)</span>`;
+    launchBtnEl.disabled = true;
+    selectedTeamPlayersPreviewEl.style.display = "none";
+    selectedTeamPlayersPreviewEl.innerHTML = "";
+  } else {
+    const teamName = selectedTeam === 3 ? "Counter-Terrorists" : "Terrorists";
+    const badgeClass = selectedTeam === 3 ? "ct" : "t";
+    const badgeText = selectedTeam === 3 ? "CT" : "T";
 
-  const displayName = player.realName ? `<span>${player.name} <span style="font-size: 0.8rem; color: #64748b; margin-left: 2px;">(Steam: ${player.realName})</span></span>` : `<span>${player.name}</span>`;
+    playerSelectLabelEl.innerHTML = `
+      <span>${teamName}</span>
+      <span class="tag-badge ${badgeClass}">${badgeText}</span>
+    `;
+    launchBtnEl.disabled = false;
 
-  playerSelectLabelEl.innerHTML = `
-    ${displayName}
-    <span class="tag-badge ${badgeClass}">${teamName}</span>
-  `;
+    // Render team lineup preview
+    selectedTeamPlayersPreviewEl.style.display = "flex";
+    selectedTeamPlayersPreviewEl.innerHTML = "";
+
+    const label = document.createElement("span");
+    label.style.fontSize = "0.75rem";
+    label.style.fontWeight = "600";
+    label.style.color = "var(--text-dark)";
+    label.style.marginRight = "6px";
+    label.textContent = "LINEUP:";
+    selectedTeamPlayersPreviewEl.appendChild(label);
+
+    const teamPlayers = demoPlayers.filter(p => p.team === selectedTeam);
+    teamPlayers.forEach(player => {
+      const badge = document.createElement("span");
+      badge.className = `player-preview-badge ${badgeClass}`;
+      badge.dataset.steamId = player.steam_id;
+
+      const isLocal = localSteamUsers.some(u => u.steam_id === player.steam_id.toString());
+      const selfTag = isLocal ? `<span class="tag-badge self">Local</span>` : "";
+      const displayName = player.realName ? `${player.name} (Steam: ${player.realName})` : player.name;
+
+      badge.innerHTML = `${displayName}${selfTag}`;
+      selectedTeamPlayersPreviewEl.appendChild(badge);
+    });
+  }
 }
 
 async function resolveStreamerNames() {
@@ -290,21 +339,19 @@ async function resolveStreamerNames() {
         player.realName = realName;
 
         // Update in dropdown list
-        const optNameEl = playerDropdownEl.querySelector(`.player-option[data-steam-id="${player.steam_id}"] .player-option-name`);
-        if (optNameEl) {
+        const playerEntryEl = playerDropdownEl.querySelector(`.player-entry[data-steam-id="${player.steam_id}"]`);
+        if (playerEntryEl) {
           const isLocal = localSteamUsers.some(u => u.steam_id === player.steam_id.toString());
           const selfTag = isLocal ? `<span class="tag-badge self">Local</span>` : "";
-          optNameEl.innerHTML = `${player.name} <span class="tag-badge" style="background: rgba(255,255,255,0.05); color: #64748b; font-size: 0.65rem; border: 1px solid rgba(255,255,255,0.1); margin-left: 4px;">Steam: ${realName}</span>${selfTag}`;
+          playerEntryEl.innerHTML = `${player.name} <span class="tag-badge" style="background: rgba(255,255,255,0.05); color: #64748b; font-size: 0.65rem; border: 1px solid rgba(255,255,255,0.1); margin-left: 4px;">Steam: ${realName}</span>${selfTag}`;
         }
 
-        // Update select label if currently selected
-        if (selectedPlayerSteamId === player.steam_id) {
-          const teamName = player.team === 3 ? "CT" : player.team === 2 ? "T" : "Spec";
-          const badgeClass = player.team === 3 ? "ct" : player.team === 2 ? "t" : "other";
-          playerSelectLabelEl.innerHTML = `
-            <span>${player.name} <span style="font-size: 0.8rem; color: #64748b; margin-left: 2px;">(Steam: ${realName})</span></span>
-            <span class="tag-badge ${badgeClass}">${teamName}</span>
-          `;
+        // Update in selected lineup preview if matches
+        const previewBadgeEl = selectedTeamPlayersPreviewEl.querySelector(`.player-preview-badge[data-steam-id="${player.steam_id}"]`);
+        if (previewBadgeEl) {
+          const isLocal = localSteamUsers.some(u => u.steam_id === player.steam_id.toString());
+          const selfTag = isLocal ? `<span class="tag-badge self">Local</span>` : "";
+          previewBadgeEl.innerHTML = `${player.name} <span style="font-size: 0.8rem; opacity: 0.8; font-weight: normal; margin-left: 2px;">(Steam: ${realName})</span>${selfTag}`;
         }
       }
     } catch (err) {
@@ -316,11 +363,14 @@ async function resolveStreamerNames() {
 function removeDemo() {
   loadedDemoPath = "";
   demoPlayers = [];
-  selectedPlayerSteamId = "";
+  selectedTeam = null;
 
   dropzoneEl.style.display = "flex";
   loadedDemoPanelEl.style.display = "none";
   launchBtnEl.disabled = true;
+  launchStatusMsgEl.classList.remove("show");
+  selectedTeamPlayersPreviewEl.style.display = "none";
+  selectedTeamPlayersPreviewEl.innerHTML = "";
 }
 
 function setupVoiceSelector() {
@@ -381,7 +431,7 @@ function setupLaunchHandler() {
       const status = await invoke("launch_cs2_demo", {
         demoPath: loadedDemoPath,
         voiceMode: selectedVoiceMode,
-        selfSteamId: selectedPlayerSteamId,
+        selfTeam: selectedTeam,
         cs2Path: cs2Path,
         players: demoPlayers
       });
@@ -390,10 +440,16 @@ function setupLaunchHandler() {
         alert("CS2 is already running!\n\nThe demo configuration has been written successfully.\n\nTo play the demo, open your CS2 console (~ key) and type:\nexec voice_demo\n\n(Note: Once loaded, the console will print a list of all unmuted players!)");
       }
 
+      launchStatusMsgEl.classList.add("show");
+      launchBtnEl.disabled = true;
+      launchBtnEl.querySelector("span").textContent = "LAUNCH DEMO";
+
       setTimeout(() => {
-        launchBtnEl.disabled = false;
-        launchBtnEl.querySelector("span").textContent = "LAUNCH DEMO";
-      }, 3000);
+        launchStatusMsgEl.classList.remove("show");
+        if (loadedDemoPath) {
+          launchBtnEl.disabled = false;
+        }
+      }, 10000);
     } catch (e) {
       console.error(e);
       alert("Failed to launch CS2: " + e);

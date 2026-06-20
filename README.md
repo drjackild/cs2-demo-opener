@@ -10,13 +10,13 @@ A desktop application for Counter-Strike 2 players and analysts to isolate and l
 
 ## Features
 
-*   **Rust Demo Parser:** Parses player information and metadata directly from binary `.dem` files using a multi-threaded Rust backend (`source2-demo` crate).
+*   **Rust Demo Parser:** Parses player information and metadata directly from binary `.dem` files or compressed `.zst` files (automatically decompressed on the fly) using a multi-threaded Rust backend (`source2-demo` crate).
 *   **Steam Profile Auto-Detection:** Scans the Windows Registry to identify logged-in Steam accounts and matches them with players in the demo.
-*   **Automated Identity Matching:** Auto-selects your active Steam account when a matching player is found in the demo.
+*   **Automated Team Matching:** Auto-selects your team when a player matching your active Steam account is found in the demo.
 *   **Steam Name Resolution:** Queries the Steam Web API to resolve original Steam usernames, bypassing in-game name changes.
 *   **Voice Isolation Options:**
-    *   **All Voices:** Hear both teammates and opponents.
-    *   **Only Team:** Hear only your team's voice communications.
+    *   **All Voices:** Hear both teams.
+    *   **Only Team:** Hear only your selected team's voice communications.
     *   **Only Enemy:** Hear only the opposing team's voice communications.
     *   **No Voices:** Mute all voice communications.
 *   **CS2 Integration:**
@@ -32,13 +32,13 @@ A desktop application for Counter-Strike 2 players and analysts to isolate and l
 ### Initial State
 ![Initial drag and drop screen](./screenshots/main_empty.jpg?v=1)
 
-### Player List Selection
-Grouped by team (CT/T/Spectator) with local profiles tagged:
-![Player dropdown selector](./screenshots/main_select_player.jpg?v=1)
+### Team Selection
+Choose between Counter-Terrorists (CT) and Terrorists (T) with complete lineup previews:
+![Team dropdown selector](./screenshots/main_select_team.jpg?v=1)
 
-### Auto-Profile Selection
-Matches the user and resolves real Steam names in the background:
-![Auto-profile selection](./screenshots/main_profile_autoselection.jpg?v=1)
+### Auto-Selection & Lineup Verification
+Auto-selects your team based on local Steam accounts, showing a lineup preview with resolved Steam profile names:
+![Lineup preview](./screenshots/main_profile_autoselection.jpg?v=1)
 
 ---
 
@@ -54,10 +54,10 @@ HKEY_CURRENT_USER\Software\Valve\Steam
 It reads `SteamPath` and parses `config/loginusers.vdf` to retrieve local Steam IDs and usernames.
 
 ### 2. Multi-threaded Demo Parsing
-The backend processes the `.dem` file up to tick 5000 in a dedicated thread with an 8MB stack size to extract player names, slots, teams, and Steam IDs.
+If a compressed `.zst` file is dropped or picked, the backend transparently decompresses it into a temporary directory first. The resulting `.dem` file is then processed up to tick 5000 in a dedicated thread with an 8MB stack size to extract player names, slots, teams, and Steam IDs.
 
 > [!NOTE]
-> Parsing is limited to tick 5000 (approx. 1 minute of 64-tick gameplay) to ensure scanning completes instantly. If a player connects/reconnects later in the match (e.g. after Round 1), they may not be detected during this initial scan. In such cases, you can select another player on their team to configure the team-based filters, but the late-joining player's own voice will remain muted since their slot index was not captured in the scan. As this is a very rare occasion, the app avoids slow dynamic parsing to keep scan times minimal.
+> Parsing is limited to tick 5000 (approx. 1 minute of 64-tick gameplay) to ensure scanning completes instantly. If a player connects/reconnects later in the match (e.g. after Round 1), they may not be detected during this initial scan. In such cases, you can select their team to configure the team-based filters, but the late-joining player's own voice will remain muted since their slot index was not captured in the scan. As this is a very rare occasion, the app avoids slow dynamic parsing to keep scan times minimal.
 
 ### 3. Voice Mask Bitwise Calculations
 The bitwise masks are calculated as follows:
