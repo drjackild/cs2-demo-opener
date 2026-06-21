@@ -131,7 +131,7 @@ function setupTauriDragDrop() {
       }
     } catch (e) {
       console.error("Failed to select file:", e);
-      alert("Failed to open file picker: " + e);
+      alert("Failed to open file picker: " + formatError(e));
     }
   });
 
@@ -203,7 +203,7 @@ async function loadDemo(path) {
   } catch (e) {
     console.error(e);
     demoStatusLabelEl.textContent = "Error parsing demo file";
-    alert("Error parsing demo file: " + e);
+    alert("Error parsing demo file: " + formatError(e));
     removeDemo();
   }
 }
@@ -452,9 +452,21 @@ function setupLaunchHandler() {
       }, 10000);
     } catch (e) {
       console.error(e);
-      alert("Failed to launch CS2: " + e);
+      alert("Failed to launch CS2: " + formatError(e));
       launchBtnEl.disabled = false;
       launchBtnEl.querySelector("span").textContent = "LAUNCH DEMO";
     }
   });
+}
+
+function formatError(e) {
+  if (e && typeof e === 'object') {
+    if (e.type && e.message) {
+      return `[${e.type}] ${e.message}`;
+    }
+    if (e.message) {
+      return e.message;
+    }
+  }
+  return e;
 }
