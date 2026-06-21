@@ -637,7 +637,7 @@ dependencies = [
 
 [[package]]
 name = "cs2-demo-opener"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "rfd",
  "serde",
