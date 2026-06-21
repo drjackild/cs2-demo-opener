@@ -1,4 +1,5 @@
 import { h } from 'preact';
+import { CloseIcon } from './Icons';
 
 export default function SettingsOverlay({ isOpen, onClose, cs2Path, onPathChange, steamUsers }) {
   return (
@@ -6,7 +7,15 @@ export default function SettingsOverlay({ isOpen, onClose, cs2Path, onPathChange
       <div>
         <div class="settings-header">
           <h2>SETTINGS</h2>
-          <button class="close-btn" onClick={onClose} id="close-settings-btn" aria-label="Close Settings">&times;</button>
+          <button
+            class="close-btn"
+            onClick={onClose}
+            id="close-settings-btn"
+            aria-label="Close Settings"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <CloseIcon width="18" height="18" />
+          </button>
         </div>
 
         <div class="settings-body">

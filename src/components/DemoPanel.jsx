@@ -1,5 +1,6 @@
 import { h } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
+import { TrashIcon, ArrowDownIcon } from './Icons';
 
 export default function DemoPanel({
   demoPath,
@@ -55,7 +56,7 @@ export default function DemoPanel({
           <span class="demo-status" id="demo-status-label">{demoStatus}</span>
         </div>
         <button class="btn-remove" onClick={onRemoveDemo} title="Remove Demo">
-          <span class="material-symbols-outlined">delete</span>
+          <TrashIcon />
         </button>
       </div>
 
@@ -82,7 +83,7 @@ export default function DemoPanel({
                 </span>
               )}
             </span>
-            <span class="material-symbols-outlined">keyboard_arrow_down</span>
+            <ArrowDownIcon />
           </button>
 
           <div class={`player-dropdown ${dropdownOpen ? 'open' : ''}`} id="player-dropdown">

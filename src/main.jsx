@@ -7,6 +7,7 @@ import SettingsOverlay from './components/SettingsOverlay';
 import Dropzone from './components/Dropzone';
 import DemoPanel from './components/DemoPanel';
 import VoiceCardGrid from './components/VoiceCardGrid';
+import { SettingsIcon, PlayIcon, CheckIcon } from './components/Icons';
 
 function App() {
   const [cs2Path, setCs2Path] = useState('');
@@ -195,7 +196,7 @@ function App() {
           <p>Start replays with custom voice bitmasks</p>
         </div>
         <button class="settings-btn" onClick={() => setSettingsOpen(true)} title="Settings">
-          <span class="material-symbols-outlined">settings</span>
+          <SettingsIcon />
         </button>
       </header>
 
@@ -225,9 +226,7 @@ function App() {
       {/* Footer/Launch */}
       <footer class="launch-container">
         <div id="launch-status-msg" class={`launch-status-msg ${launchSuccess ? 'show' : ''}`}>
-          <span class="material-symbols-outlined" style={{ color: '#10b981', marginRight: '6px', fontSize: '18px', fontWeight: 'bold' }}>
-            check_circle
-          </span>
+          <CheckIcon style={{ marginRight: '6px', flexShrink: 0 }} />
           <span>demo launched</span>
         </div>
         <button
@@ -236,9 +235,7 @@ function App() {
           disabled={isLaunchDisabled}
           onClick={handleLaunch}
         >
-          <span class="material-symbols-outlined" style={{ fontSize: '18px', marginRight: '6px', verticalAlign: 'middle' }}>
-            play_arrow
-          </span>
+          <PlayIcon style={{ marginRight: '6px' }} />
           <span>{launching ? 'LAUNCHING...' : 'LAUNCH DEMO'}</span>
         </button>
       </footer>

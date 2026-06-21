@@ -2,6 +2,7 @@ import { h } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import { UploadIcon } from './Icons';
 
 export default function Dropzone({ onFileSelected }) {
   const [dragOver, setDragOver] = useState(false);
@@ -102,9 +103,7 @@ export default function Dropzone({ onFileSelected }) {
       onClick={handleClick}
     >
       <div class="dropzone-icon">
-        <span class="material-symbols-outlined" style={{ fontSize: '48px' }}>
-          upload_file
-        </span>
+        <UploadIcon />
       </div>
       <h3>Drop CS2 Demo File</h3>
       <p>Drag your .dem or .zst file here to begin parsing</p>
