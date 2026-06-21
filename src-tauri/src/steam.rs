@@ -90,7 +90,7 @@ pub fn detect_cs2_path_internal() -> Result<Option<String>, AppError> {
                 if line.starts_with("\"path\"") {
                     let parts: Vec<&str> = line.split('"').collect();
                     if parts.len() >= 4 {
-                        libraries.push(parts[3].to_string());
+                        libraries.push(parts[3].replace("\\\\", "\\"));
                     }
                 }
             }

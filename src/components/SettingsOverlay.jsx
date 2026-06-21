@@ -1,0 +1,58 @@
+import { h } from 'preact';
+
+export default function SettingsOverlay({ isOpen, onClose, cs2Path, onPathChange, steamUsers }) {
+  return (
+    <div class={`settings-overlay glass-panel ${isOpen ? 'open' : ''}`} id="settings-overlay">
+      <div>
+        <div class="settings-header">
+          <h2>SETTINGS</h2>
+          <button class="close-btn" onClick={onClose} id="close-settings-btn" aria-label="Close Settings">&times;</button>
+        </div>
+
+        <div class="settings-body">
+          <div class="settings-group">
+            <label for="cs2-path-input">CS2 Game Path</label>
+            <div class="settings-input-row">
+              <input
+                type="text"
+                class="settings-input"
+                id="cs2-path-input"
+                placeholder="Auto-detecting CS2 path..."
+                value={cs2Path}
+                onInput={(e) => onPathChange(e.target.value)}
+              />
+            </div>
+            <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '4px 0 0 0' }}>
+              Must point to the folder containing 'bin' and 'csgo' (e.g. '...\common\Counter-Strike Global Offensive\game')
+            </p>
+          </div>
+
+          <div class="settings-group">
+            <label>Local Steam Accounts</label>
+            <div class="steam-accounts-list" id="steam-accounts-list">
+              {steamUsers.length === 0 ? (
+                <div style={{ padding: '10px', color: '#64748b', fontSize: '0.8rem', textAlign: 'center' }}>
+                  No local accounts found
+                </div>
+              ) : (
+                steamUsers.map((user) => (
+                  <div class="steam-account-item" key={user.steam_id}>
+                    <span>{user.persona_name}</span>
+                    <span class="steam-id">{user.steam_id}</span>
+                  </div>
+                ))
+              )}
+            </div>
+            <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '4px 0 0 0' }}>
+              These profiles will be automatically matched to the player list inside dropped demos.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-footer">
+        <button class="btn-secondary" onClick={onClose} id="save-settings-btn">Save & Close</button>
+      </div>
+    </div>
+  );
+}
