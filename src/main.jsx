@@ -1,6 +1,7 @@
 import { h, render } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { invoke } from '@tauri-apps/api/core';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import './styles.css';
 
 import SettingsOverlay from './components/SettingsOverlay';
@@ -20,11 +21,22 @@ function App() {
   const [launching, setLaunching] = useState(false);
   const [launchSuccess, setLaunchSuccess] = useState(false);
   const [demoStatus, setDemoStatus] = useState('');
+  const [appVersion, setAppVersion] = useState('');
+  const [latestVersion, setLatestVersion] = useState('');
 
   // Initial load
   useEffect(() => {
     async function loadSettings() {
-      // 1. CS2 Path
+      // 1. App Version & Update Check
+      let currentVersion = '';
+      try {
+        currentVersion = await invoke('get_app_version');
+        setAppVersion(currentVersion);
+      } catch (e) {
+        console.error('Failed to get app version:', e);
+      }
+
+      // 2. CS2 Path
       const savedPath = localStorage.getItem('cs2_path');
       if (savedPath) {
         setCs2Path(savedPath);
@@ -40,7 +52,7 @@ function App() {
         }
       }
 
-      // 2. Steam Accounts
+      // 3. Steam Accounts
       try {
         const users = await invoke('get_steam_user_info');
         setLocalSteamUsers(users);
@@ -48,10 +60,28 @@ function App() {
         console.error('Failed to read Steam accounts:', e);
       }
 
-      // 3. Voice Mode
+      // 4. Voice Mode
       const savedVoice = localStorage.getItem('voice_mode');
       if (savedVoice) {
         setSelectedVoiceMode(savedVoice);
+      }
+
+      // 5. Asynchronous Update Check (does not block loading settings)
+      if (currentVersion) {
+        try {
+          const res = await fetch('https://api.github.com/repos/drjackild/cs2-demo-opener/releases/latest');
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.tag_name) {
+              const tag = data.tag_name.replace(/^v/, '').trim();
+              if (tag && tag !== currentVersion) {
+                setLatestVersion(tag);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to check for updates:', err);
+        }
       }
     }
 
@@ -185,6 +215,14 @@ function App() {
     return e;
   };
 
+  const handleOpenReleases = async () => {
+    try {
+      await openUrl('https://github.com/drjackild/cs2-demo-opener/releases/latest');
+    } catch (err) {
+      console.error('Failed to open releases URL:', err);
+    }
+  };
+
   const isLaunchDisabled = !loadedDemoPath || selectedTeam === null || launching || launchSuccess;
 
   return (
@@ -195,8 +233,27 @@ function App() {
           <h1>CS2 DEMO OPENER</h1>
           <p>Start replays with custom voice bitmasks</p>
         </div>
-        <button class="settings-btn" onClick={() => setSettingsOpen(true)} title="Settings">
+        <button
+          class="settings-btn"
+          style={{ position: 'relative' }}
+          onClick={() => setSettingsOpen(true)}
+          title="Settings"
+        >
           <SettingsIcon />
+          {latestVersion && latestVersion !== appVersion && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '-2px',
+                right: '-2px',
+                width: '8px',
+                height: '8px',
+                backgroundColor: '#10b981',
+                borderRadius: '50%',
+                boxShadow: '0 0 8px #10b981'
+              }}
+            />
+          )}
         </button>
       </header>
 
@@ -248,6 +305,9 @@ function App() {
         onSavePath={handleSavePath}
         onPathChange={handleSavePath}
         steamUsers={localSteamUsers}
+        appVersion={appVersion}
+        latestVersion={latestVersion}
+        onOpenReleases={handleOpenReleases}
       />
     </>
   );

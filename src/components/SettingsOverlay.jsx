@@ -1,7 +1,16 @@
 import { h } from 'preact';
 import { CloseIcon } from './Icons';
 
-export default function SettingsOverlay({ isOpen, onClose, cs2Path, onPathChange, steamUsers }) {
+export default function SettingsOverlay({
+  isOpen,
+  onClose,
+  cs2Path,
+  onPathChange,
+  steamUsers,
+  appVersion,
+  latestVersion,
+  onOpenReleases
+}) {
   return (
     <div class={`settings-overlay glass-panel ${isOpen ? 'open' : ''}`} id="settings-overlay">
       <div>
@@ -59,7 +68,22 @@ export default function SettingsOverlay({ isOpen, onClose, cs2Path, onPathChange
         </div>
       </div>
 
-      <div class="settings-footer">
+      <div class="settings-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <div class="settings-version-info" style={{ fontSize: '0.8rem', color: '#64748b' }}>
+          Version {appVersion || '0.2.3'}
+          {latestVersion && latestVersion !== appVersion && (
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                onOpenReleases();
+              }}
+              style={{ marginLeft: '10px', color: '#10b981', textDecoration: 'none', fontWeight: 600 }}
+            >
+              Update Available (v{latestVersion})
+            </a>
+          )}
+        </div>
         <button class="btn-secondary" onClick={onClose} id="save-settings-btn">Save & Close</button>
       </div>
     </div>

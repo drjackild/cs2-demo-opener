@@ -47,6 +47,11 @@ fn select_demo_file() -> Result<Option<String>, AppError> {
     Ok(file.map(|p| p.to_string_lossy().into_owned()))
 }
 
+#[tauri::command]
+fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -57,7 +62,8 @@ pub fn run() {
             parse_demo_players,
             launch_cs2_demo,
             resolve_steam_name,
-            select_demo_file
+            select_demo_file,
+            get_app_version
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
