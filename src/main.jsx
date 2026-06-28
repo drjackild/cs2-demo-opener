@@ -2,20 +2,23 @@ import { h, render } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { listen } from '@tauri-apps/api/event';
 import './styles.css';
 
 import SettingsOverlay from './components/SettingsOverlay';
 import Dropzone from './components/Dropzone';
 import DemoPanel from './components/DemoPanel';
 import VoiceCardGrid from './components/VoiceCardGrid';
+import ReplayViewer from './components/ReplayViewer';
 import { SettingsIcon, PlayIcon, CheckIcon } from './components/Icons';
 
-function App() {
+function MainApp() {
   const [cs2Path, setCs2Path] = useState('');
   const [localSteamUsers, setLocalSteamUsers] = useState([]);
   const [selectedVoiceMode, setSelectedVoiceMode] = useState('all');
   const [loadedDemoPath, setLoadedDemoPath] = useState('');
   const [demoPlayers, setDemoPlayers] = useState([]);
+  const [mapName, setMapName] = useState('');
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [launching, setLaunching] = useState(false);
@@ -23,6 +26,46 @@ function App() {
   const [demoStatus, setDemoStatus] = useState('');
   const [appVersion, setAppVersion] = useState('');
   const [latestVersion, setLatestVersion] = useState('');
+  const [viewing2D, setViewing2D] = useState(false);
+  const [hasMapAsset, setHasMapAsset] = useState(false);
+  const [downloadingAsset, setDownloadingAsset] = useState(false);
+
+  useEffect(() => {
+    async function checkAsset() {
+      if (!mapName || mapName === 'unknown') {
+        setHasMapAsset(false);
+        return;
+      }
+      try {
+        const exists = await invoke('check_map_assets', { mapName });
+        setHasMapAsset(exists);
+      } catch (err) {
+        console.error('Failed to check map asset:', err);
+        setHasMapAsset(false);
+      }
+    }
+    checkAsset();
+  }, [mapName]);
+
+  const handleDownloadAsset = async () => {
+    if (!mapName || mapName === 'unknown') return;
+    setDownloadingAsset(true);
+    try {
+      await invoke('download_map_assets', { mapName });
+      setHasMapAsset(true);
+      handleView2D();
+    } catch (err) {
+      console.error('Failed to download map asset:', err);
+      alert('Failed to download map asset: ' + formatError(err));
+    } finally {
+      setDownloadingAsset(false);
+    }
+  };
+
+  const handleView2D = () => {
+    invoke('open_2d_viewer_window', { demoPath: loadedDemoPath, mapName });
+    setViewing2D(true);
+  };
 
   // Initial load
   useEffect(() => {
@@ -88,16 +131,36 @@ function App() {
     loadSettings();
   }, []);
 
+  useEffect(() => {
+    let unlisten;
+    async function setupDestroyListener() {
+      try {
+        unlisten = await listen('2d_viewer_destroyed', () => {
+          setViewing2D(false);
+        });
+      } catch (err) {
+        console.error('Failed to register 2d_viewer_destroyed listener:', err);
+      }
+    }
+    setupDestroyListener();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
   const handleFileSelected = async (path) => {
     setLoadedDemoPath(path);
     setDemoStatus('Parsing demo players...');
     setDemoPlayers([]);
+    setMapName('');
     setSelectedTeam(null);
 
     try {
       const result = await invoke('parse_demo_players', { demoPath: path });
       const players = result.players;
       setDemoPlayers(players);
+      console.log('Map name from rust:', result.map_name);
+      setMapName(result.map_name || '');
       setLoadedDemoPath(result.uncompressed_path);
       setDemoStatus(`Demo loaded (${players.length} players found)`);
 
@@ -151,6 +214,7 @@ function App() {
   const handleRemoveDemo = () => {
     setLoadedDemoPath('');
     setDemoPlayers([]);
+    setMapName('');
     setSelectedTeam(null);
     setLaunchSuccess(false);
   };
@@ -223,7 +287,39 @@ function App() {
     }
   };
 
-  const isLaunchDisabled = !loadedDemoPath || selectedTeam === null || launching || launchSuccess;
+  const isLaunchDisabled = !loadedDemoPath || 
+    launching || 
+    launchSuccess || 
+    (selectedVoiceMode !== 'all' && selectedVoiceMode !== 'none' && selectedTeam === null);
+
+  const is2DDisabled = !loadedDemoPath || !mapName || mapName === 'unknown' || downloadingAsset || viewing2D;
+
+  const handle2DClick = () => {
+    if (hasMapAsset) {
+      handleView2D();
+    } else {
+      handleDownloadAsset();
+    }
+  };
+
+  const get2DButtonTitle = () => {
+    if (viewing2D) return "2D Replay Viewer is already open.";
+    if (!loadedDemoPath) return "No demo loaded. Please drag and drop a demo first.";
+    if (!mapName || mapName === 'unknown') return "Map is unknown, 2D replay is unavailable.";
+    if (downloadingAsset) return "Downloading map assets...";
+    if (hasMapAsset) return "Open 2D Replay Viewer";
+    return "Download 2D Map Asset";
+  };
+
+  const getLaunchButtonTitle = () => {
+    if (!loadedDemoPath) return "No demo loaded. Please drag and drop a demo first.";
+    if (launching) return "Demo is launching...";
+    if (launchSuccess) return "Demo launched successfully!";
+    if (selectedVoiceMode !== 'all' && selectedVoiceMode !== 'none' && selectedTeam === null) {
+      return "Please select a team in the dropdown first to launch voice filtering.";
+    }
+    return "Launch CS2 Demo";
+  };
 
   return (
     <>
@@ -264,6 +360,7 @@ function App() {
             demoPath={loadedDemoPath}
             demoStatus={demoStatus}
             demoPlayers={demoPlayers}
+            mapName={mapName}
             localSteamUsers={localSteamUsers}
             selectedTeam={selectedTeam}
             onSelectTeam={setSelectedTeam}
@@ -281,16 +378,47 @@ function App() {
       </main>
 
       {/* Footer/Launch */}
-      <footer class="launch-container">
-        <div id="launch-status-msg" class={`launch-status-msg ${launchSuccess ? 'show' : ''}`}>
-          <CheckIcon style={{ marginRight: '6px', flexShrink: 0 }} />
-          <span>demo launched</span>
-        </div>
+      <div id="launch-status-msg" class={`launch-status-msg ${launchSuccess ? 'show' : ''}`}>
+        <CheckIcon style={{ marginRight: '6px', flexShrink: 0 }} />
+        <span>demo launched</span>
+      </div>
+      <footer class="launch-container" style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
         <button
-          class="launch-btn"
+          class="view-2d-btn"
+          disabled={is2DDisabled}
+          onClick={handle2DClick}
+          title={get2DButtonTitle()}
+        >
+          {downloadingAsset ? (
+            <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}>
+              <line x1="12" y1="2" x2="12" y2="6"/>
+              <line x1="12" y1="18" x2="12" y2="22"/>
+              <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/>
+              <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
+              <line x1="2" y1="12" x2="6" y2="12"/>
+              <line x1="18" y1="12" x2="22" y2="12"/>
+              <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/>
+              <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
+            </svg>
+          ) : hasMapAsset ? (
+            <span style={{ fontWeight: '850', fontSize: '0.85rem', border: '2px solid currentColor', borderRadius: '6px', padding: '2px 5px', display: 'inline-block', lineHeight: 1 }}>2D</span>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+              <span style={{ fontWeight: '850', fontSize: '0.65rem', border: '1.5px solid currentColor', borderRadius: '4px', padding: '1px 3.5px', lineHeight: 1 }}>2D</span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '10px', height: '10px' }}>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </div>
+          )}
+        </button>
+        <button
+          class={`launch-btn ${isLaunchDisabled ? 'disabled' : ''}`}
           id="launch-btn"
-          disabled={isLaunchDisabled}
-          onClick={handleLaunch}
+          onClick={isLaunchDisabled ? null : handleLaunch}
+          title={getLaunchButtonTitle()}
+          style={{ flex: 1 }}
         >
           <PlayIcon style={{ marginRight: '6px' }} />
           <span>{launching ? 'LAUNCHING...' : 'LAUNCH DEMO'}</span>
@@ -311,6 +439,38 @@ function App() {
       />
     </>
   );
+}
+
+function App() {
+  const [isViewer, setIsViewer] = useState(false);
+  const [viewerProps, setViewerProps] = useState({});
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#/viewer')) {
+      const qs = hash.split('?')[1] || '';
+      const params = new URLSearchParams(qs);
+      setIsViewer(true);
+      setViewerProps({
+        demoPath: params.get('demoPath'),
+        mapName: params.get('mapName'),
+      });
+    }
+  }, []);
+
+  if (isViewer) {
+    return <ReplayViewer 
+        demoPath={viewerProps.demoPath} 
+        mapName={viewerProps.mapName} 
+        onClose={() => {
+            import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+                getCurrentWindow().close();
+            });
+        }}
+    />;
+  }
+
+  return <MainApp />;
 }
 
 render(<App />, document.getElementById('app'));

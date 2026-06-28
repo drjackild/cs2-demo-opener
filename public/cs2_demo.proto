@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package cs2_demo;
+
+message PlayerMetadata {
+    uint32 id = 1;
+    string steam_id = 2;
+    string name = 3;
+    uint32 team = 4;
+}
+
+message PlayerTickData {
+    uint32 player_id = 1;
+    float x = 2;
+    float y = 3;
+    float z = 4;
+    float yaw = 5;
+    bool is_alive = 6;
+    int32 hp = 7;
+    int32 armor = 8;
+    bool has_helmet = 9;
+    bool has_defuser = 10;
+    bool parsed_first_frame = 11;
+    string active_weapon = 12;
+    repeated string inventory = 13;
+    bool has_bomb = 14;
+    bool is_defusing = 15;
+    float flash_duration = 16;
+    float flash_max_alpha = 17;
+    int32 kills = 18;
+    int32 deaths = 19;
+    int32 assists = 20;
+    int32 money = 21;
+}
+
+message GrenadeTickData {
+    uint32 id = 1;
+    string class_name = 2;
+    float x = 3;
+    float y = 4;
+    float z = 5;
+}
+
+message GameEventTickData {
+    string event_type = 1;
+    uint32 user_id = 2;
+    uint32 entityid = 3;
+    float x = 4;
+    float y = 5;
+    float z = 6;
+    float yaw = 7;
+    string weapon = 8;
+    float blind_duration = 9;
+    uint32 team = 10;
+    string steam_id = 11;
+    string attacker_id = 12;
+    string assister_id = 13;
+    bool headshot = 14;
+    int32 penetrated = 15;
+    bool thrusmoke = 16;
+    bool noscope = 17;
+    bool attackerblind = 18;
+}
+
+message TickData {
+    uint32 tick = 1;
+    repeated PlayerTickData players = 2;
+    repeated GrenadeTickData grenades = 3;
+    repeated GameEventTickData events = 4;
+}
+
+message RoundChunk {
+    uint32 round = 1;
+    uint32 start_tick = 2;
+    uint32 end_tick = 3;
+    repeated TickData ticks = 4;
+    map<string, uint32> initial_teams = 5;
+    repeated PlayerMetadata players_metadata = 6;
+}

@@ -19,3 +19,9 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Third-Party Assets Disclaimer:
+The MIT License applies strictly to the source code of the "CS2 Demo Voice Opener" application itself. 
+Any Counter-Strike 2 (CS2) assets, map graphics, and weapon vector icons downloaded or bundled are the property of Valve Corporation and/or the respective open-source repository authors (such as ChetdeJong/cs2-killfeed-generator and MurkyYT/cs2-map-icons) and are not covered by this license.

@@ -466,18 +466,18 @@ main {
   box-shadow: 0 4px 15px rgba(16, 185, 129, 0.15);
 }
 
-.launch-btn:hover:not(:disabled) {
+.launch-btn:hover:not(:disabled):not(.disabled) {
   transform: translateY(-1px);
   background: linear-gradient(135deg, #059669 0%, #047857 100%);
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25);
 }
 
-.launch-btn:active:not(:disabled) {
+.launch-btn:active:not(:disabled):not(.disabled) {
   transform: translateY(1px);
   box-shadow: 0 2px 10px rgba(16, 185, 129, 0.15);
 }
 
-.launch-btn:disabled {
+.launch-btn:disabled, .launch-btn.disabled {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: rgba(255, 255, 255, 0.4);
   cursor: not-allowed;
@@ -711,4 +711,50 @@ main {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-3px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* 2D Viewer Button */
+.view-2d-btn {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.15);
+}
+
+.view-2d-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
+  box-shadow: 0 6px 15px rgba(217, 119, 6, 0.25);
+}
+
+.view-2d-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.15);
+}
+
+.view-2d-btn:disabled {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.25);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

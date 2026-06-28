@@ -18,4 +18,5 @@ pub struct PlayerInfo {
 pub struct ParseResult {
     pub players: Vec<PlayerInfo>,
     pub uncompressed_path: String,
+    pub map_name: String,
 }

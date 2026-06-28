@@ -6,6 +6,7 @@ export default function DemoPanel({
   demoPath,
   demoStatus,
   demoPlayers,
+  mapName,
   localSteamUsers,
   selectedTeam,
   onSelectTeam,
@@ -50,14 +51,26 @@ export default function DemoPanel({
 
   return (
     <div id="loaded-demo-panel" class="loaded-demo-panel glass-panel" style={{ padding: '15px' }}>
-      <div class="demo-file-badge">
-        <div class="demo-info">
+      <div class="demo-file-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div class="demo-info" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <span class="demo-name" id="demo-name-label">{filename}</span>
           <span class="demo-status" id="demo-status-label">{demoStatus}</span>
         </div>
-        <button class="btn-remove" onClick={onRemoveDemo} title="Remove Demo">
-          <TrashIcon />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {mapName && mapName !== 'unknown' && (
+            <div class="map-badge" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.05)', padding: '5px 12px', borderRadius: '20px', border: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.8rem', fontWeight: '500', color: 'var(--text-main)' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '13px', height: '13px', color: '#eab308' }}>
+                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+                <line x1="9" y1="3" x2="9" y2="18"/>
+                <line x1="15" y1="6" x2="15" y2="21"/>
+              </svg>
+              <span>Map: <strong style={{ color: '#fff', marginLeft: '2px' }}>{mapName}</strong></span>
+            </div>
+          )}
+          <button class="btn-remove" onClick={onRemoveDemo} title="Remove Demo">
+            <TrashIcon />
+          </button>
+        </div>
       </div>
 
       <div class="player-selector-box">
