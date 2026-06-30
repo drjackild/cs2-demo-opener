@@ -6,7 +6,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/drjackild/cs2-demo-opener)](https://github.com/drjackild/cs2-demo-opener/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/drjackild/cs2-demo-opener/total)](https://github.com/drjackild/cs2-demo-opener/releases)
 
-A desktop application for Counter-Strike 2 players and analysts to isolate and listen to specific team or player voice communications in match demos. Built with **Tauri v2**, **Rust**, **Preact**, and **Vite**.
+A desktop application for Counter-Strike 2 players and analysts to either watch an interactive 2D replay of the match directly in the app, or launch CS2 with customized player voice masks to isolate team comms. Built with **Tauri v2**, **Rust**, **Preact**, and **Vite**.
 
 ![App Interface](./screenshots/main.jpg?v=1)
 
