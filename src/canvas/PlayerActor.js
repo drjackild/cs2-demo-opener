@@ -95,11 +95,17 @@ export class PlayerActor {
         }
 
         // Draw flashbang halo if blind
-        if (p.flash_duration > 0 && p.flash_max_alpha > 0) {
-            ctx.beginPath();
-            ctx.arc(px, py, SIZES.PLAYER_RADIUS + 4, 0, 2 * Math.PI, false);
-            ctx.fillStyle = `rgba(255, 255, 255, ${(p.flash_max_alpha / 255.0) * 0.8})`;
-            ctx.fill();
+        const activeBlind = processedEvents.blinds?.find(b => b.player_id === p.player_id && currentI >= b.start_i && currentI <= b.end_i);
+        if (activeBlind) {
+            const progress = (currentI - activeBlind.start_i) / activeBlind.duration_ticks;
+            const alpha = 1.0 - Math.min(1.0, progress);
+            if (alpha > 0.01) {
+                // Draw a filled white circle covering the player dot and extending outward
+                ctx.beginPath();
+                ctx.arc(px, py, SIZES.PLAYER_RADIUS + 4, 0, 2 * Math.PI, false);
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.85})`;
+                ctx.fill();
+            }
         }
 
         // Draw bomb action progress
@@ -179,20 +185,7 @@ export class PlayerActor {
                 }
             }
 
-            // Check if player is blinded
-            const activeBlind = processedEvents.blinds.find(b => b.steam_id === p.steam_id && currentI >= b.i && currentI <= b.i + b.duration_ticks);
-            if (activeBlind) {
-                const progress = (currentI - activeBlind.i) / activeBlind.duration_ticks;
-                // Exponential decay for the blind visual
-                const alpha = Math.pow(1.0 - Math.min(1.0, progress), 4);
-
-                if (alpha > 0.05) {
-                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                    ctx.beginPath();
-                    ctx.arc(px, py, SIZES.PLAYER_RADIUS, 0, 2 * Math.PI, false);
-                    ctx.fill();
-                }
-            }
+            // Handled in unified real-time flash_duration block above
         }
     }
 }

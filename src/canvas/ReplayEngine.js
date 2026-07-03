@@ -23,6 +23,7 @@ export class ReplayEngine {
 
         const activeSmokes = {};
         const activeInfernos = {};
+        const activeFlashes = {};
 
         for (let i = 0; i < chunkData.ticks.length; i++) {
             const tickData = chunkData.ticks[i];
@@ -55,6 +56,30 @@ export class ReplayEngine {
                 }
             }
 
+            // Check player flash_duration to build accurate blinds list
+            if (tickData.players) {
+                for (const p of tickData.players) {
+                    if (p.flash_duration > 0) {
+                        if (!activeFlashes[p.player_id]) {
+                            activeFlashes[p.player_id] = {
+                                start_i: i
+                            };
+                        }
+                    } else {
+                        if (activeFlashes[p.player_id]) {
+                            const flash = activeFlashes[p.player_id];
+                            blinds.push({
+                                player_id: p.player_id,
+                                start_i: flash.start_i,
+                                end_i: i,
+                                duration_ticks: Math.max(1, i - flash.start_i)
+                            });
+                            delete activeFlashes[p.player_id];
+                        }
+                    }
+                }
+            }
+
             for (const ev of tickData.events) {
                 if (ev.event_type === 'weapon_fire') {
                     if (ev.weapon === 'weapon_taser') {
@@ -69,7 +94,7 @@ export class ReplayEngine {
                 } else if (ev.event_type === 'flashbang_detonate') {
                     flashes.push({ tick: t, i, x: ev.x, y: ev.y, z: ev.z, entityid: ev.entityid });
                 } else if (ev.event_type === 'player_blind') {
-                    blinds.push({ tick: t, i, steam_id: ev.steam_id, duration_ticks: ev.blind_duration * 64.0 });
+                    // Handled in player tick data loop above for accurate timing
                 } else if (ev.event_type === 'smokegrenade_detonate') {
                     activeSmokes[ev.entityid] = { start_i: i, start_tick: t, x: ev.x, y: ev.y, z: ev.z, end_i: chunkData.ticks.length, entityid: ev.entityid };
                 } else if (ev.event_type === 'smokegrenade_expired') {
@@ -129,6 +154,17 @@ export class ReplayEngine {
         Object.values(activeSmokes).forEach(s => smokes.push(s));
         Object.values(activeInfernos).forEach(f => infernos.push(f));
 
+        // Flush any active flashes at the end of the chunk
+        Object.keys(activeFlashes).forEach(player_id => {
+            const flash = activeFlashes[player_id];
+            blinds.push({
+                player_id: Number(player_id),
+                start_i: flash.start_i,
+                end_i: chunkData.ticks.length,
+                duration_ticks: Math.max(1, chunkData.ticks.length - flash.start_i)
+            });
+        });
+
         if (activeBombAction) {
             activeBombAction.end_i = chunkData.ticks.length;
             activeBombAction.success = false;
@@ -144,6 +180,11 @@ export class ReplayEngine {
         ctx.translate(transformRef.current.x, transformRef.current.y);
         ctx.scale(transformRef.current.scale, transformRef.current.scale);
 
+        // Scale logical coordinates (0 to 1024) to physical canvas dimensions
+        const scaleX = width / 1024;
+        const scaleY = height / 1024;
+        ctx.scale(scaleX, scaleY);
+
         // Background
         ctx.fillStyle = '#000000';
         ctx.fillRect(-5000, -5000, 10000, 10000);
@@ -152,20 +193,20 @@ export class ReplayEngine {
         if (activeFloor === 'upper') {
             if (mapImage) {
                 ctx.globalAlpha = 1.0;
-                ctx.drawImage(mapImage, 2, 2, mapImage.width - 4, mapImage.height - 4, 0, 0, width, height);
+                ctx.drawImage(mapImage, 2, 2, mapImage.width - 4, mapImage.height - 4, 0, 0, 1024, 1024);
             }
             if (lowerMapImage) {
                 ctx.globalAlpha = 0.5;
-                ctx.drawImage(lowerMapImage, 2, 2, lowerMapImage.width - 4, lowerMapImage.height - 4, 0, 0, width, height);
+                ctx.drawImage(lowerMapImage, 2, 2, lowerMapImage.width - 4, lowerMapImage.height - 4, 0, 0, 1024, 1024);
             }
         } else {
             if (lowerMapImage) {
                 ctx.globalAlpha = 1.0;
-                ctx.drawImage(lowerMapImage, 2, 2, lowerMapImage.width - 4, lowerMapImage.height - 4, 0, 0, width, height);
+                ctx.drawImage(lowerMapImage, 2, 2, lowerMapImage.width - 4, lowerMapImage.height - 4, 0, 0, 1024, 1024);
             }
             if (mapImage) {
                 ctx.globalAlpha = 0.5;
-                ctx.drawImage(mapImage, 2, 2, mapImage.width - 4, mapImage.height - 4, 0, 0, width, height);
+                ctx.drawImage(mapImage, 2, 2, mapImage.width - 4, mapImage.height - 4, 0, 0, 1024, 1024);
             }
         }
         ctx.globalAlpha = 1.0;
@@ -251,17 +292,17 @@ export class ReplayEngine {
         }
 
         // Bullets
-        for (const b of processedEvents.bullets) {
+        for (const b of (processedEvents.bullets || [])) {
             EffectActor.drawTracer(ctx, b, currentI, activeFloor, isLower, transformX, transformY);
         }
 
         // Tasers
-        for (const t of processedEvents.tasers) {
+        for (const t of (processedEvents.tasers || [])) {
             EffectActor.drawTaser(ctx, t, currentI, activeFloor, isLower, transformX, transformY);
         }
 
         // Knifes
-        for (const k of processedEvents.knifes) {
+        for (const k of (processedEvents.knifes || [])) {
             EffectActor.drawKnife(ctx, k, currentI, activeFloor, isLower, transformX, transformY);
         }
 
@@ -276,22 +317,22 @@ export class ReplayEngine {
         }
 
         // HE Explosions
-        for (const ex of processedEvents.explosions) {
+        for (const ex of (processedEvents.explosions || [])) {
             GrenadeActor.drawExplosion(ctx, ex, currentI, activeFloor, isLower, transformX, transformY);
         }
 
         // Flashbangs
-        for (const fb of processedEvents.flashes) {
+        for (const fb of (processedEvents.flashes || [])) {
             GrenadeActor.drawFlashbang(ctx, fb, currentI, activeFloor, isLower, transformX, transformY);
         }
 
         // Smokes
-        for (const s of processedEvents.smokes) {
+        for (const s of (processedEvents.smokes || [])) {
             GrenadeActor.drawSmoke(ctx, s, currentI, activeFloor, isLower, transformX, transformY);
         }
 
         // Infernos
-        for (const f of processedEvents.infernos) {
+        for (const f of (processedEvents.infernos || [])) {
             GrenadeActor.drawInferno(ctx, f, currentI, activeFloor, isLower, transformX, transformY);
         }
 

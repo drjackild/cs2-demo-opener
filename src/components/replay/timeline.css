@@ -1,21 +1,63 @@
+.round-timeline-wrapper {
+  position: relative;
+  width: 100%;
+}
+
 .round-timeline-container {
   display: flex;
   gap: 4px;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 8px 16px;
-  margin-top: 8px;
+  margin: 8px auto 0 auto;
+  width: max-content;
+  max-width: 100%;
+  box-sizing: border-box;
   background: var(--bg-dropdown);
   border-radius: 8px;
   border: 1px solid var(--border-color);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  cursor: grab;
+  scroll-behavior: smooth;
+  user-select: none;
+  scrollbar-width: none; /* Firefox */
 }
+
+.round-timeline-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}
+
+.timeline-fade {
+  position: absolute;
+  top: 9px;
+  bottom: 1px;
+  width: 40px;
+  z-index: 10;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.fade-left {
+  left: 1px;
+  border-radius: 8px 0 0 8px;
+  background: linear-gradient(to right, var(--bg-dropdown) 0%, rgba(23, 25, 29, 0) 100%);
+}
+
+.fade-right {
+  right: 1px;
+  border-radius: 0 8px 8px 0;
+  background: linear-gradient(to left, var(--bg-dropdown) 0%, rgba(23, 25, 29, 0) 100%);
+}
+
 .timeline-divider {
   width: 2px;
   height: 48px;
   background-color: var(--border-active);
   border-radius: 1px;
   margin: 0 4px;
+  flex-shrink: 0;
 }
 
 .timeline-round {
@@ -32,6 +74,7 @@
   position: relative;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .timeline-round:hover {

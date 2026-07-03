@@ -3,6 +3,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { listen } from '@tauri-apps/api/event';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import './styles.css';
 
 import SettingsOverlay from './components/SettingsOverlay';
@@ -463,9 +464,7 @@ function App() {
         demoPath={viewerProps.demoPath} 
         mapName={viewerProps.mapName} 
         onClose={() => {
-            import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
-                getCurrentWindow().close();
-            });
+            getCurrentWindow().close();
         }}
     />;
   }

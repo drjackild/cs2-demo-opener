@@ -25,13 +25,33 @@ export default function ReplayCanvas({ chunkData, playerMeta, mapName, mapBase64
     const lastMousePosRef = useRef({ x: 0, y: 0 });
     const containerRef = useRef(null);
 
+    const [canvasSize, setCanvasSize] = useState({ width: 800, height: 800 });
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const observer = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const { width, height } = entry.contentRect;
+                const size = Math.floor(Math.min(width, height)) || 512;
+                setCanvasSize({ width: size, height: size });
+            }
+        });
+
+        observer.observe(container);
+        return () => observer.disconnect();
+    }, []);
+
     const handleWheel = (e) => {
         e.preventDefault();
         const zoomDelta = e.deltaY * -0.001;
         let newScale = transformRef.current.scale * (1 + zoomDelta);
         newScale = Math.max(0.5, Math.min(newScale, 5.0));
 
-        const rect = containerRef.current.parentElement.getBoundingClientRect();
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
@@ -85,8 +105,20 @@ export default function ReplayCanvas({ chunkData, playerMeta, mapName, mapBase64
     const [mapImage, setMapImage] = useState(null);
     const [lowerMapImage, setLowerMapImage] = useState(null);
 
-    // Processed events
-    const [processedEvents, setProcessedEvents] = useState({ bullets: [], explosions: [], smokes: [], infernos: [], flashes: [], blinds: [] });
+    const [processedEvents, setProcessedEvents] = useState({
+        bullets: [],
+        tasers: [],
+        knifes: [],
+        explosions: [],
+        smokes: [],
+        infernos: [],
+        flashes: [],
+        blinds: [],
+        bombActions: [],
+        bombPlantedEvent: null,
+        bombExplodedEvent: null,
+        bombDefusedEvent: null
+    });
 
     useEffect(() => {
         if (mapBase64) {
@@ -103,6 +135,12 @@ export default function ReplayCanvas({ chunkData, playerMeta, mapName, mapBase64
             img.src = lowerMapBase64;
         }
     }, [lowerMapBase64]);
+
+    useEffect(() => {
+        if (!isPlayingRef.current && drawCanvasRef.current) {
+            drawCanvasRef.current(currentTickRef.current);
+        }
+    }, [canvasSize]);
 
     // Map scaling
     const mapMeta = mapData[mapName] || { pos_x: -3000, pos_y: 2000, scale: 5.0 };
@@ -207,7 +245,6 @@ export default function ReplayCanvas({ chunkData, playerMeta, mapName, mapBase64
 
     return (
         <div className="replay-canvas-wrapper">
-
             <div className="replay-canvas-layout">
 
                 {/* Left Panel: Team 1 (usually CT) */}
@@ -253,11 +290,11 @@ export default function ReplayCanvas({ chunkData, playerMeta, mapName, mapBase64
                         </button>
                     </div>
 
-                    <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
+                    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <canvas
                             ref={canvasRef}
-                            width={1024}
-                            height={1024}
+                            width={canvasSize.width}
+                            height={canvasSize.height}
                             style={{ width: '100%', height: '100%', display: 'block' }}
                         />
                     </div>

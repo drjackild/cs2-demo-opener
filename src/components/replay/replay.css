@@ -59,33 +59,36 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 1800px;
-  margin: auto;
-  min-width: min-content;
-  padding: 16px 0;
+  height: 100%;
+  padding: 16px;
+  box-sizing: border-box;
   flex-grow: 1;
   overflow: hidden;
-  justify-content: center;
+  justify-content: space-between;
 }
 
 .replay-canvas-layout {
   display: flex;
   width: 100%;
+  flex: 1 1 auto;
   gap: 24px;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
+  overflow: hidden;
 }
 
 .replay-canvas-container {
   position: relative;
-  width: 800px;
-  height: 800px;
+  width: 100%;
+  height: 100%;
+  max-width: min(100%, calc(100vh - 180px));
+  max-height: min(100%, calc(100vw - 640px));
+  aspect-ratio: 1 / 1;
   background-color: #000;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 8px 32px 0 var(--shadow-panel);
   border: 1px solid var(--border-color);
-  flex-shrink: 1;
   cursor: grab;
 }
 
@@ -109,9 +112,12 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 330px;
+  width: 280px;
   flex-shrink: 0;
-  padding: 0 16px;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 8px;
 }
 
 .team-panel-title {
@@ -205,19 +211,20 @@
 }
 
 .playback-controls {
-  position: fixed;
-  bottom: 0;
-  left: 0;
+  position: relative;
   width: 100%;
-  padding: 16px 24px;
+  padding: 12px 24px;
   background: var(--bg-glass);
-  border-top: 1px solid var(--border-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 16px;
   z-index: 100;
   box-sizing: border-box;
   backdrop-filter: blur(12px);
+  margin-top: 16px;
+  flex-shrink: 0;
 }
 
 .playback-play-btn {
@@ -536,6 +543,7 @@
   opacity: 1;
 }
 
+/* PlayerCard updates */
 .player-card-v2 {
   display: flex;
   flex-direction: column;
@@ -543,7 +551,7 @@
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 8px;
-  width: 330px;
+  width: 100%;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 

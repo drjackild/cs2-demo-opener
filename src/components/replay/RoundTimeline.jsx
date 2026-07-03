@@ -1,8 +1,19 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import './timeline.css';
 
 export default function RoundTimeline({ matchInfo, currentRound, onSeek }) {
   if (!matchInfo || matchInfo.length === 0) return null;
+
+  const containerRef = useRef(null);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const scrollLeft = useRef(0);
+  const startMouseX = useRef(0);
+  const hasDragged = useRef(false);
+  const dragThreshold = 5;
+
+  const [showLeftShadow, setShowLeftShadow] = useState(false);
+  const [showRightShadow, setShowRightShadow] = useState(false);
 
   const rounds = useMemo(() => {
     return matchInfo.map((r, i) => {
@@ -20,6 +31,61 @@ export default function RoundTimeline({ matchInfo, currentRound, onSeek }) {
       };
     });
   }, [matchInfo, currentRound]);
+
+  const checkScroll = () => {
+    const container = containerRef.current;
+    if (!container) return;
+    setShowLeftShadow(container.scrollLeft > 2);
+    setShowRightShadow(container.scrollLeft < container.scrollWidth - container.clientWidth - 2);
+  };
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, [rounds]);
+
+  // Center current round when it changes
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const activeEl = container.querySelector('.timeline-round.current');
+    if (activeEl) {
+      const activeRect = activeEl.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const offsetLeft = activeRect.left - containerRect.left + container.scrollLeft;
+      const scrollPos = offsetLeft - (containerRect.width / 2) + (activeRect.width / 2);
+      container.scrollTo({ left: scrollPos, behavior: 'smooth' });
+    }
+  }, [currentRound]);
+
+  const handleMouseDown = (e) => {
+    isDragging.current = true;
+    startX.current = e.pageX - containerRef.current.offsetLeft;
+    scrollLeft.current = containerRef.current.scrollLeft;
+    startMouseX.current = e.pageX;
+    hasDragged.current = false;
+    containerRef.current.style.cursor = 'grabbing';
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging.current) return;
+    e.preventDefault();
+    const x = e.pageX - containerRef.current.offsetLeft;
+    if (Math.abs(e.pageX - startMouseX.current) > dragThreshold) {
+      hasDragged.current = true;
+    }
+    const walk = (x - startX.current) * 1.5;
+    containerRef.current.scrollLeft = scrollLeft.current - walk;
+    checkScroll();
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+    if (containerRef.current) {
+      containerRef.current.style.cursor = 'grab';
+    }
+  };
 
   const renderReasonIcon = (reason) => {
     if (reason === 1) {
@@ -57,22 +123,41 @@ export default function RoundTimeline({ matchInfo, currentRound, onSeek }) {
   };
 
   return (
-    <div className="round-timeline-container">
-      {rounds.map((round) => (
-        <React.Fragment key={round.round_number}>
-          <div 
-            className={`timeline-round ${round.winnerClass} ${round.isCurrent ? 'current' : ''}`}
-            onClick={() => onSeek && onSeek(round.round_number)}
-            title={`Round ${round.round_number}`}
-          >
-            {renderReasonIcon(round.reason)}
-            <span className="timeline-round-num">{round.round_number}</span>
-          </div>
-          {isSideSwitch(round.round_number) && (
-            <div className="timeline-divider" />
-          )}
-        </React.Fragment>
-      ))}
+    <div className="round-timeline-wrapper">
+      {showLeftShadow && <div className="timeline-fade fade-left" />}
+      {showRightShadow && <div className="timeline-fade fade-right" />}
+      
+      <div 
+        ref={containerRef}
+        className="round-timeline-container"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onScroll={checkScroll}
+      >
+        {rounds.map((round) => (
+          <React.Fragment key={round.round_number}>
+            <div 
+              className={`timeline-round ${round.winnerClass} ${round.isCurrent ? 'current' : ''}`}
+              onClick={(e) => {
+                if (hasDragged.current) {
+                  e.preventDefault();
+                  return;
+                }
+                onSeek && onSeek(round.round_number);
+              }}
+              title={`Round ${round.round_number}`}
+            >
+              {renderReasonIcon(round.reason)}
+              <span className="timeline-round-num">{round.round_number}</span>
+            </div>
+            {isSideSwitch(round.round_number) && (
+              <div className="timeline-divider" />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
     </div>
   );
 }

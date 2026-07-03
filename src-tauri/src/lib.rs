@@ -42,7 +42,7 @@ async fn open_2d_viewer_window(app: tauri::AppHandle, demo_path: String, map_nam
     let window = WebviewWindowBuilder::new(&app, window_label, tauri::WebviewUrl::App(url.into()))
         .title(format!("2D Replay - {}", map_name))
         .inner_size(1750.0, 1100.0)
-        .min_inner_size(1750.0, 1100.0)
+        .min_inner_size(1024.0, 700.0)
         .build()
         .map_err(|e| e.to_string())?;
 
