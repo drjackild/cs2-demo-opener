@@ -28,6 +28,33 @@ export class ReplayEngine {
             const tickData = chunkData.ticks[i];
             const t = tickData.tick;
 
+            // Check if active action has ended due to weapon swap, death, or stopping defusal
+            if (activeBombAction) {
+                const player = tickData.players?.find(p => p.steam_id === activeBombAction.steam_id);
+                if (player) {
+                    if (activeBombAction.type === 'plant') {
+                        if (!player.is_alive || player.active_weapon?.toLowerCase() !== 'c4') {
+                            activeBombAction.end_i = i;
+                            activeBombAction.success = false;
+                            bombActions.push(activeBombAction);
+                            activeBombAction = null;
+                        }
+                    } else if (activeBombAction.type === 'defuse') {
+                        if (!player.is_alive || !player.is_defusing) {
+                            activeBombAction.end_i = i;
+                            activeBombAction.success = false;
+                            bombActions.push(activeBombAction);
+                            activeBombAction = null;
+                        }
+                    }
+                } else {
+                    activeBombAction.end_i = i;
+                    activeBombAction.success = false;
+                    bombActions.push(activeBombAction);
+                    activeBombAction = null;
+                }
+            }
+
             for (const ev of tickData.events) {
                 if (ev.event_type === 'weapon_fire') {
                     if (ev.weapon === 'weapon_taser') {
