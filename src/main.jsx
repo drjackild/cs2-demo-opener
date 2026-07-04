@@ -40,6 +40,12 @@ function MainApp() {
       try {
         const exists = await invoke('check_map_assets', { mapName });
         setHasMapAsset(exists);
+        if (exists) {
+          // Silently trigger ETag update check in background to verify asset freshness
+          invoke('download_map_assets', { mapName }).catch(err => {
+            console.error('Background map update check failed:', err);
+          });
+        }
       } catch (err) {
         console.error('Failed to check map asset:', err);
         setHasMapAsset(false);
@@ -288,6 +294,14 @@ function MainApp() {
     }
   };
 
+  const handleOpenIssue = async () => {
+    try {
+      await openUrl('https://github.com/drjackild/cs2-demo-opener/issues/new');
+    } catch (err) {
+      console.error('Failed to open issues URL:', err);
+    }
+  };
+
   const isLaunchDisabled = !loadedDemoPath || 
     launching || 
     launchSuccess || 
@@ -437,6 +451,7 @@ function MainApp() {
         appVersion={appVersion}
         latestVersion={latestVersion}
         onOpenReleases={handleOpenReleases}
+        onOpenIssue={handleOpenIssue}
       />
     </>
   );

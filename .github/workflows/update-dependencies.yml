@@ -1,0 +1,109 @@
+name: Weekly Dependency Updates
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Every Sunday at midnight
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check for updates
+        id: check-updates
+        run: |
+          python -c '
+          import urllib.request
+          import json
+          import re
+          import os
+
+          def get_latest_version(crate_name):
+              req = urllib.request.Request(
+                  f"https://crates.io/api/v1/crates/{crate_name}",
+                  headers={"User-Agent": "cs2-demo-opener-ci (github.com/drjackild/cs2-demo-opener)"}
+              )
+              with urllib.request.urlopen(req) as response:
+                  data = json.loads(response.read().decode())
+                  return data["crate"]["max_version"]
+
+          latest_demo = get_latest_version("source2-demo")
+          latest_proto = get_latest_version("source2-demo-protobufs")
+
+          print(f"Latest source2-demo: {latest_demo}")
+          print(f"Latest source2-demo-protobufs: {latest_proto}")
+
+          os.chdir("src-tauri")
+          with open("Cargo.toml", "r") as f:
+              cargo_content = f.read()
+
+          demo_match = re.search(r"source2-demo\s*=\s*\{\s*version\s*=\s*\"([^\"]+)\"", cargo_content)
+          proto_match = re.search(r"source2-demo-protobufs\s*=\s*\"([^\"]+)\"", cargo_content)
+
+          current_demo = demo_match.group(1) if demo_match else None
+          current_proto = proto_match.group(1) if proto_match else None
+
+          print(f"Current source2-demo: {current_demo}")
+          print(f"Current source2-demo-protobufs: {current_proto}")
+
+          updated = False
+          if latest_demo and current_demo and latest_demo != current_demo:
+              cargo_content = re.sub(
+                  r"(source2-demo\s*=\s*\{\s*version\s*=\s*\")[^\"]+(\")",
+                  r"\g<1>" + latest_demo + r"\g<2>",
+                  cargo_content
+              )
+              print(f"Updating source2-demo to {latest_demo}")
+              updated = True
+
+          if latest_proto and current_proto and latest_proto != current_proto:
+              cargo_content = re.sub(
+                  r"(source2-demo-protobufs\s*=\s*\")[^\"]+(\")",
+                  r"\g<1>" + latest_proto + r"\g<2>",
+                  cargo_content
+              )
+              print(f"Updating source2-demo-protobufs to {latest_proto}")
+              updated = True
+
+          if updated:
+              with open("Cargo.toml", "w") as f:
+                  f.write(cargo_content)
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write(f"updated=true\n")
+                  f.write(f"demo_version={latest_demo}\n")
+                  f.write(f"proto_version={latest_proto}\n")
+          else:
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write("updated=false\n")
+          '
+
+      - name: Update Cargo.lock
+        if: steps.check-updates.outputs.updated == 'true'
+        run: |
+          cd src-tauri
+          cargo check
+
+      - name: Create Pull Request
+        if: steps.check-updates.outputs.updated == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deps): update source2-demo to ${{ steps.check-updates.outputs.demo_version }} and source2-demo-protobufs to ${{ steps.check-updates.outputs.proto_version }}"
+          title: "chore(deps): upgrade CS2 parser dependencies"
+          body: |
+            Automated dependency update:
+            - Bumps `source2-demo` to `${{ steps.check-updates.outputs.demo_version }}` in `Cargo.toml`.
+            - Bumps `source2-demo-protobufs` to `${{ steps.check-updates.outputs.proto_version }}` in `Cargo.toml`.
+            - Verified compiles successfully.
+          branch: "update-parser-dependencies"
+          delete-branch: true

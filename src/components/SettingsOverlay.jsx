@@ -9,7 +9,8 @@ export default function SettingsOverlay({
   steamUsers,
   appVersion,
   latestVersion,
-  onOpenReleases
+  onOpenReleases,
+  onOpenIssue
 }) {
   return (
     <div class={`settings-overlay glass-panel ${isOpen ? 'open' : ''}`} id="settings-overlay">
@@ -69,20 +70,33 @@ export default function SettingsOverlay({
       </div>
 
       <div class="settings-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-        <div class="settings-version-info" style={{ fontSize: '0.8rem', color: '#64748b' }}>
-          Version {appVersion || '0.2.3'}
-          {latestVersion && latestVersion !== appVersion && (
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                onOpenReleases();
-              }}
-              style={{ marginLeft: '10px', color: '#10b981', textDecoration: 'none', fontWeight: 600 }}
-            >
-              Update Available (v{latestVersion})
-            </a>
-          )}
+        <div class="settings-version-info" style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.8rem', color: '#64748b' }}>
+          <div>
+            Version {appVersion || '0.3.0'}
+            {latestVersion && latestVersion !== appVersion && (
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onOpenReleases();
+                }}
+                style={{ marginLeft: '10px', color: '#10b981', textDecoration: 'none', fontWeight: 600 }}
+              >
+                Update Available (v{latestVersion})
+              </a>
+            )}
+          </div>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              onOpenIssue();
+            }}
+            style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '0.75rem', width: 'fit-content', fontWeight: 550 }}
+            id="report-issue-link"
+          >
+            Report an Issue
+          </a>
         </div>
         <button class="btn-secondary" onClick={onClose} id="save-settings-btn">Save & Close</button>
       </div>
