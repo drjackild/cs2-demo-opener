@@ -8,7 +8,7 @@
   gap: 4px;
   align-items: center;
   justify-content: flex-start;
-  padding: 8px 16px;
+  padding: 8px 16px 12px 16px;
   margin: 8px auto 0 auto;
   width: max-content;
   max-width: 100%;
@@ -19,9 +19,8 @@
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
-  cursor: grab;
-  scroll-behavior: smooth;
   user-select: none;
+  cursor: grab;
   scrollbar-width: none; /* Firefox */
 }
 
@@ -35,20 +34,39 @@
   bottom: 1px;
   width: 40px;
   z-index: 10;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
   transition: opacity 0.3s ease;
 }
 
 .fade-left {
   left: 1px;
   border-radius: 8px 0 0 8px;
-  background: linear-gradient(to right, var(--bg-dropdown) 0%, rgba(23, 25, 29, 0) 100%);
+  background: linear-gradient(to right, var(--bg-dropdown) 30%, rgba(23, 25, 29, 0) 100%);
 }
 
 .fade-right {
   right: 1px;
   border-radius: 0 8px 8px 0;
-  background: linear-gradient(to left, var(--bg-dropdown) 0%, rgba(23, 25, 29, 0) 100%);
+  background: linear-gradient(to left, var(--bg-dropdown) 30%, rgba(23, 25, 29, 0) 100%);
+}
+
+.scroll-indicator-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+.fade-left .scroll-indicator-arrow {
+  left: 8px;
+}
+
+.fade-right .scroll-indicator-arrow {
+  right: 8px;
 }
 
 .timeline-divider {

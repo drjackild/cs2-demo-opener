@@ -8,9 +8,7 @@ export default function RoundTimeline({ matchInfo, currentRound, onSeek }) {
   const isDragging = useRef(false);
   const startX = useRef(0);
   const scrollLeft = useRef(0);
-  const startMouseX = useRef(0);
-  const hasDragged = useRef(false);
-  const dragThreshold = 5;
+  const dragStartX = useRef(0);
 
   const [showLeftShadow, setShowLeftShadow] = useState(false);
   const [showRightShadow, setShowRightShadow] = useState(false);
@@ -19,7 +17,7 @@ export default function RoundTimeline({ matchInfo, currentRound, onSeek }) {
     return matchInfo.map((r, i) => {
       const isPast = r.round_number < currentRound;
       const isCurrent = r.round_number === currentRound;
-      
+
       let winnerClass = '';
       if (r.winner === 2) winnerClass = 't-win';
       else if (r.winner === 3) winnerClass = 'ct-win';
@@ -37,6 +35,44 @@ export default function RoundTimeline({ matchInfo, currentRound, onSeek }) {
     if (!container) return;
     setShowLeftShadow(container.scrollLeft > 2);
     setShowRightShadow(container.scrollLeft < container.scrollWidth - container.clientWidth - 2);
+  };
+
+  const scrollLeftBy = () => {
+    const container = containerRef.current;
+    if (container) {
+      container.scrollBy({ left: -160, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRightBy = () => {
+    const container = containerRef.current;
+    if (container) {
+      container.scrollBy({ left: 160, behavior: 'smooth' });
+    }
+  };
+
+  const handleMouseDown = (e) => {
+    isDragging.current = true;
+    dragStartX.current = e.pageX;
+    startX.current = e.pageX - containerRef.current.offsetLeft;
+    scrollLeft.current = containerRef.current.scrollLeft;
+    containerRef.current.style.cursor = 'grabbing';
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging.current) return;
+    e.preventDefault();
+    const x = e.pageX - containerRef.current.offsetLeft;
+    const walk = (x - startX.current) * 1.5;
+    containerRef.current.scrollLeft = scrollLeft.current - walk;
+    checkScroll();
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+    if (containerRef.current) {
+      containerRef.current.style.cursor = 'grab';
+    }
   };
 
   useEffect(() => {
@@ -59,57 +95,29 @@ export default function RoundTimeline({ matchInfo, currentRound, onSeek }) {
     }
   }, [currentRound]);
 
-  const handleMouseDown = (e) => {
-    isDragging.current = true;
-    startX.current = e.pageX - containerRef.current.offsetLeft;
-    scrollLeft.current = containerRef.current.scrollLeft;
-    startMouseX.current = e.pageX;
-    hasDragged.current = false;
-    containerRef.current.style.cursor = 'grabbing';
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDragging.current) return;
-    e.preventDefault();
-    const x = e.pageX - containerRef.current.offsetLeft;
-    if (Math.abs(e.pageX - startMouseX.current) > dragThreshold) {
-      hasDragged.current = true;
-    }
-    const walk = (x - startX.current) * 1.5;
-    containerRef.current.scrollLeft = scrollLeft.current - walk;
-    checkScroll();
-  };
-
-  const handleMouseUp = () => {
-    isDragging.current = false;
-    if (containerRef.current) {
-      containerRef.current.style.cursor = 'grab';
-    }
-  };
-
   const renderReasonIcon = (reason) => {
     if (reason === 1) {
-        return <img src="/weapons/c4.svg" alt="Exploded" className="reason-icon" onError={(e) => { e.target.style.display = 'none'; }} />;
+      return <img src="/weapons/c4.svg" alt="Exploded" className="reason-icon" onError={(e) => { e.target.style.display = 'none'; }} />;
     }
     if (reason === 7) {
-        return <img src="/weapons/defuser.svg" alt="Defused" className="reason-icon" onError={(e) => { e.target.style.display = 'none'; }} />;
+      return <img src="/weapons/defuser.svg" alt="Defused" className="reason-icon" onError={(e) => { e.target.style.display = 'none'; }} />;
     }
     if (reason === 8 || reason === 9) {
-        return (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="reason-icon inline-svg">
-                <circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/>
-                <path d="M8 9a4 4 0 1 1 8 0c0 2-2 4-2 7H10c0-3-2-5-2-7Z"/>
-                <path d="M9 22l-1-2M15 22l1-2M12 22v-3"/>
-            </svg>
-        );
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="reason-icon inline-svg">
+          <circle cx="9" cy="12" r="1" /><circle cx="15" cy="12" r="1" />
+          <path d="M8 9a4 4 0 1 1 8 0c0 2-2 4-2 7H10c0-3-2-5-2-7Z" />
+          <path d="M9 22l-1-2M15 22l1-2M12 22v-3" />
+        </svg>
+      );
     }
     if (reason === 12 || reason === 13) {
-        return (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="reason-icon inline-svg">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-            </svg>
-        );
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="reason-icon inline-svg">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+      );
     }
     return null;
   };
@@ -124,10 +132,22 @@ export default function RoundTimeline({ matchInfo, currentRound, onSeek }) {
 
   return (
     <div className="round-timeline-wrapper">
-      {showLeftShadow && <div className="timeline-fade fade-left" />}
-      {showRightShadow && <div className="timeline-fade fade-right" />}
-      
-      <div 
+      {showLeftShadow && (
+        <div className="timeline-fade fade-left" onClick={scrollLeftBy}>
+          <svg className="scroll-indicator-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </div>
+      )}
+      {showRightShadow && (
+        <div className="timeline-fade fade-right" onClick={scrollRightBy}>
+          <svg className="scroll-indicator-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </div>
+      )}
+
+      <div
         ref={containerRef}
         className="round-timeline-container"
         onMouseDown={handleMouseDown}
@@ -138,11 +158,10 @@ export default function RoundTimeline({ matchInfo, currentRound, onSeek }) {
       >
         {rounds.map((round) => (
           <React.Fragment key={round.round_number}>
-            <div 
+            <div
               className={`timeline-round ${round.winnerClass} ${round.isCurrent ? 'current' : ''}`}
               onClick={(e) => {
-                if (hasDragged.current) {
-                  e.preventDefault();
+                if (Math.abs(e.pageX - dragStartX.current) > 5) {
                   return;
                 }
                 onSeek && onSeek(round.round_number);
