@@ -3787,9 +3787,9 @@ dependencies = [
 
 [[package]]
 name = "source2-demo"
-version = "0.5.6"
+version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9195133527f377f754a3d53c7b0c91a5d938b3a67a0987e1812ed04f5ff643a"
+checksum = "fec15c76066755c0539706bc3c08000d4853942a7b826402c9de790b53d25172"
 dependencies = [
  "anyhow",
  "bitflags 2.13.0",
@@ -3806,9 +3806,9 @@ dependencies = [
 
 [[package]]
 name = "source2-demo-macros"
-version = "0.5.6"
+version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0972536779bbefde6bee14ea323a77a170be38c53a80dc44fbd0a69f9009136"
+checksum = "7571e4af5e7933e1a537577ae0faad4972da0c552ce154b83781971700078081"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3817,9 +3817,9 @@ dependencies = [
 
 [[package]]
 name = "source2-demo-protobufs"
-version = "0.5.6"
+version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9916b2ae0bc3c5a8e69037a6b78a5919421eaf2ffd122bcbe7725c9175e46403"
+checksum = "5eb180a51d4201abaadea3c1e46686ed67b7c4f5e12044143f69c2fe7538a26c"
 dependencies = [
  "itertools",
  "prost 0.14.4",
