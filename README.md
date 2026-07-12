@@ -101,24 +101,24 @@ The application is structured into two main layers:
 ## Setup & Development
 
 ### Prerequisites
-*   [Node.js](https://nodejs.org/)
+*   [Bun](https://bun.sh/)
 *   [Rust](https://www.rust-lang.org/)
 *   [Tauri CLI](https://tauri.app/v1/guides/developer-tooling/cli/)
 *   Windows OS (for Registry scanning and CS2 path resolution)
 
 ### Install Dependencies
 ```bash
-npm install
+bun install
 ```
 
 ### Run in Development
 ```bash
-npm run tauri dev
+bun tauri dev
 ```
 
 ### Build Production Release
 ```bash
-npm run tauri build
+bun tauri build
 ```
 
 ---
