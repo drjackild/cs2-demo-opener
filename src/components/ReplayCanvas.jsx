@@ -142,6 +142,12 @@ export default function ReplayCanvas({ chunkData, playerMeta, mapName, mapBase64
         }
     }, [canvasSize]);
 
+    useEffect(() => {
+        if (!isPlayingState && drawCanvasRef.current) {
+            drawCanvasRef.current(currentTickIndex);
+        }
+    }, [currentTickIndex, isPlayingState]);
+
     // Map scaling
     const mapMeta = mapData[mapName] || { pos_x: -3000, pos_y: 2000, scale: 5.0 };
 

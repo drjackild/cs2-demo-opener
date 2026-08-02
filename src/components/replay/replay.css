@@ -264,9 +264,87 @@
   border-color: var(--border-active);
 }
 
-.playback-timeline {
+.playback-timeline-container {
+  position: relative;
   flex: 1;
+  display: flex;
+  align-items: center;
+  height: 20px;
+}
+
+.playback-timeline {
+  width: 100%;
   accent-color: var(--accent-primary);
+  margin: 0;
+  cursor: pointer;
+  z-index: 2;
+  background: transparent;
+}
+
+.playback-timeline-marks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.timeline-mark {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: pointer;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.15s ease;
+}
+
+.timeline-mark:hover {
+  transform: translate(-50%, -50%) scale(1.5);
+  filter: brightness(1.2);
+  z-index: 10;
+}
+
+.timeline-mark.player_death {
+  background-color: var(--remove-color);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.timeline-mark.bomb_planted {
+  background-color: var(--t-color);
+  border-radius: 2px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.timeline-mark.bomb_planted:hover {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.5);
+}
+
+.timeline-mark.bomb_defused {
+  background-color: var(--self-color);
+  border-radius: 2px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.timeline-mark.bomb_defused:hover {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.5);
+}
+
+.timeline-mark.bomb_exploded {
+  background-color: #ef4444;
+  border-radius: 2px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.timeline-mark.bomb_exploded:hover {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.5);
 }
 
 .playback-time {
