@@ -116,8 +116,16 @@ fn launch_cs2_demo(
     self_team: u8,
     cs2_path: String,
     players: Vec<PlayerInfo>,
+    target_player_name: Option<String>,
 ) -> Result<String, AppError> {
-    launcher::launch_cs2_demo_internal(demo_path, voice_mode, self_team, cs2_path, players)
+    launcher::launch_cs2_demo_internal(
+        demo_path,
+        voice_mode,
+        self_team,
+        cs2_path,
+        players,
+        target_player_name,
+    )
 }
 
 #[tauri::command]

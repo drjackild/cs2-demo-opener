@@ -82,6 +82,7 @@ pub fn write_voice_demo_cfg(
     mask_low: i32,
     mask_high: i32,
     unmuted_players: &[PlayerInfo],
+    target_player: Option<&PlayerInfo>,
 ) -> Result<(), AppError> {
     let cfg_dir = cs2_game_dir.join("csgo").join("cfg");
     std::fs::create_dir_all(&cfg_dir)
@@ -120,6 +121,22 @@ pub fn write_voice_demo_cfg(
         }
     }
 
+    let target_player_info = match target_player {
+        Some(p) => format!("echo \" Target Player Lock: {} (Slot {})\";\n", p.name.replace('"', ""), p.slot),
+        None => "echo \" Target Player Lock: NONE (Free Spectate)\";\n".to_string(),
+    };
+
+    let spec_lock_commands = match target_player {
+        Some(p) => {
+            let slot_1based = p.slot + 1;
+            format!(
+                "spec_autodirector 0\nplaydemo \"demos/{}\"\nspec_player {}\nbind \"F1\" \"spec_player {}\"\n",
+                demo_filename, slot_1based, slot_1based
+            )
+        }
+        None => format!("playdemo \"demos/{}\"\n", demo_filename),
+    };
+
     let content = format!(
         r#"echo ""
 echo "=================================================="
@@ -127,20 +144,21 @@ echo "   CS2 DEMO VOICE OPENER - CONFIG LOADED"
 echo "=================================================="
 echo " Voice Mode: {}"
 echo " Team (Me): {}"
-echo "--------------------------------------------------"
+{}"--------------------------------------------------"
 echo " Unmuted Players:"
 {}echo "=================================================="
 echo ""
 tv_listen_voice_indices {}
 tv_listen_voice_indices_h {}
-playdemo "demos/{}"
+{}
 "#,
         voice_mode.to_uppercase(),
         self_team_info,
+        target_player_info,
         unmuted_players_text,
         mask_low,
         mask_high,
-        demo_filename
+        spec_lock_commands
     );
 
     cfg_file
@@ -192,6 +210,7 @@ pub fn launch_cs2_demo_internal(
     self_team: u8,
     cs2_path: String,
     players: Vec<PlayerInfo>,
+    target_player_name: Option<String>,
 ) -> Result<String, AppError> {
     let resolved_path = prepare_demo_path(&demo_path)?;
     let demo_file_path = Path::new(&resolved_path);
@@ -239,6 +258,10 @@ pub fn launch_cs2_demo_internal(
     let (mask_low, mask_high, unmuted_players) =
         calculate_voice_masks(&voice_mode, self_team, &players)?;
 
+    let target_player_info = target_player_name
+        .as_ref()
+        .and_then(|name| players.iter().find(|p| &p.name == name));
+
     let filename_str = filename.to_string_lossy();
     write_voice_demo_cfg(
         cs2_game_dir,
@@ -248,6 +271,7 @@ pub fn launch_cs2_demo_internal(
         mask_low,
         mask_high,
         &unmuted_players,
+        target_player_info,
     )?;
 
     use std::os::windows::process::CommandExt;
@@ -757,6 +781,7 @@ mod tests {
             1,
             0,
             &players,
+            None,
         );
 
         assert!(result.is_ok());
@@ -769,6 +794,87 @@ mod tests {
         assert!(content.contains("Team (Me): Counter-Terrorists (CT)"));
         assert!(content.contains("tv_listen_voice_indices 1"));
         assert!(content.contains("tv_listen_voice_indices_h 0"));
+        assert!(content.contains("playdemo \"demos/test_match.dem\""));
+
+        // Clean up
+        let _ = std::fs::remove_dir_all(temp_dir);
+    }
+
+    #[test]
+    fn test_write_voice_demo_cfg_with_target_player() {
+        let temp_dir = std::env::temp_dir().join("cs2_demo_opener_test_cfg_target");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let players = vec![
+            PlayerInfo {
+                steam_id: "1".to_string(),
+                name: "s1mple".to_string(),
+                team: 3,
+                slot: 0,
+            },
+        ];
+
+        let result = write_voice_demo_cfg(
+            &temp_dir,
+            "test_match.dem",
+            "all",
+            3,
+            -1,
+            -1,
+            &players,
+            Some(&players[0]),
+        );
+
+        assert!(result.is_ok());
+
+        let cfg_path = temp_dir.join("csgo").join("cfg").join("voice_demo.cfg");
+        assert!(cfg_path.exists());
+
+        let content = std::fs::read_to_string(&cfg_path).unwrap();
+        assert!(content.contains("Target Player Lock: s1mple (Slot 0)"));
+        assert!(content.contains("spec_autodirector 0"));
+        assert!(content.contains("spec_player 1"));
+        assert!(content.contains("bind \"F1\" \"spec_player 1\""));
+
+        // Clean up
+        let _ = std::fs::remove_dir_all(temp_dir);
+    }
+
+    #[test]
+    fn test_write_voice_demo_cfg_without_target_player() {
+        let temp_dir = std::env::temp_dir().join("cs2_demo_opener_test_cfg_none");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let players = vec![
+            PlayerInfo {
+                steam_id: "1".to_string(),
+                name: "s1mple".to_string(),
+                team: 3,
+                slot: 0,
+            },
+        ];
+
+        let result = write_voice_demo_cfg(
+            &temp_dir,
+            "test_match.dem",
+            "all",
+            3,
+            -1,
+            -1,
+            &players,
+            None,
+        );
+
+        assert!(result.is_ok());
+
+        let cfg_path = temp_dir.join("csgo").join("cfg").join("voice_demo.cfg");
+        assert!(cfg_path.exists());
+
+        let content = std::fs::read_to_string(&cfg_path).unwrap();
+        assert!(content.contains("Target Player Lock: NONE (Free Spectate)"));
+        assert!(!content.contains("spec_player"));
+        assert!(!content.contains("spec_autodirector 0"));
+        assert!(!content.contains("bind \"F1\""));
         assert!(content.contains("playdemo \"demos/test_match.dem\""));
 
         // Clean up

@@ -24,6 +24,7 @@ A desktop application for Counter-Strike 2 players and analysts to either watch 
     *   **Live Kill Feed:** Tracks all round events including kills, assists, headshot icons, and flash/blind assists.
     *   **Player Indicators:** Shows real-time weapon icons, health bars, defusal/planting progress circles, and live C4/defuse kit badges next to name tags.
 *   **Voice Isolation Convars:** Configure and isolate voice logs with options like *All Voices*, *Only Team*, *Only Enemy*, or *No Voices*.
+*   **Camera Target Lock & F1 Spectator Bind:** Focus the spectator camera onto a target player using team-colored selectors or interactive lineup badges (`spec_player <slot>`). Automatically sets an in-game `F1` hotkey bind in `voice_demo.cfg` so you can instantly switch back to spectating your target player if the view shifts at round start or player death.
 *   **CS2 Launch Integration:** Detects CS2 paths, sets up configuration files automatically, and launches CS2 ready to execute your isolated playback.
 
 
@@ -39,6 +40,10 @@ Choose between Counter-Terrorists (CT) and Terrorists (T) with complete lineup p
 ### Auto-Selection & Lineup Verification
 Auto-selects your team based on local Steam accounts, showing a lineup preview with resolved Steam profile names:
 ![Lineup preview](./screenshots/main_profile_autoselection.jpg?v=1)
+
+### Camera Target Lock & Lineup Focus
+Lock spectator focus to a target player with team-colored selectors, interactive lineup badges, and in-game `F1` focus keybind:
+![Camera Target Lock Selector](./screenshots/main_camera_lock.jpg?v=1)
 
 ### 2D Replay Viewer
 An interactive, high-performance 2D replay canvas showing player movements, grenade trajectories, live kill feeds, and HUD score widgets:
@@ -80,9 +85,13 @@ The voice bitmasks are calculated dynamically based on your selected team. Slots
 *   If slot $32 \le s < 64$: `mask_high |= (1 << (s - 32))`
 
 ### 4. Launching the Demo & CFG Execution
-Once a voice mode is selected, the application:
+Once a voice mode and target player lock option are selected, the application:
 1. Copies the `.dem` file to the game directory (`<CS2_Path>/game/csgo/demos/`).
-2. Generates `<CS2_Path>/game/csgo/cfg/voice_demo.cfg` containing the calculated masks, UI logging commands, and the `playdemo demos/<name>.dem` playback launch convar.
+2. Generates `<CS2_Path>/game/csgo/cfg/voice_demo.cfg` containing the calculated masks, UI logging commands, and spectator target lock convars:
+   * `spec_autodirector 0` to disable automatic camera switching.
+   * `spec_player <slot>` using the player's 1-based spectator slot index ($s + 1$).
+   * `bind "F1" "spec_player <slot>"` so you can instantly refocus the camera onto your target player in-game if spectator focus switches.
+   * `playdemo demos/<name>.dem` to start demo playback.
 3. Spawns Steam (`steam.exe -applaunch 730 +exec voice_demo.cfg`) to launch CS2 (falling back to spawning `cs2.exe` directly if Steam cannot be found) or alerts you to run `exec voice_demo` in the game console if CS2 is already running.
 
 ### 5. High-Performance 2D Replay Chunking (Protobuf & Caching)

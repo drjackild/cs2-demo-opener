@@ -58,8 +58,8 @@
 
 body {
   margin: 0;
-  padding: 20px;
-  height: calc(100vh - 40px);
+  padding: 16px 20px;
+  height: calc(100vh - 32px);
   background: radial-gradient(circle at 50% 0%, var(--bg-top-gradient) 0%, var(--bg-main) 80%);
   display: flex;
   flex-direction: column;
@@ -95,7 +95,7 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
 
 .title-container h1 {
@@ -140,8 +140,8 @@ main {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  overflow: hidden;
+  gap: 12px;
+  overflow-y: auto;
 }
 
 /* Dropzone styling */
@@ -440,6 +440,101 @@ main {
   color: var(--self-color);
   border: 1px solid var(--self-border);
   margin-left: 4px;
+}
+
+/* Lineup Preview Badges */
+.selected-team-players-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.player-preview-badge {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.player-preview-badge.ct.targeted {
+  border: 1px solid var(--ct-color);
+  box-shadow: 0 0 8px var(--ct-border);
+  background: var(--ct-bg);
+}
+
+.player-preview-badge.t.targeted {
+  border: 1px solid var(--t-color);
+  box-shadow: 0 0 8px var(--t-border);
+  background: var(--t-bg);
+}
+
+/* Camera Target Lock Section */
+.player-lock-box {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.target-player-select {
+  background: #17191d;
+  color: var(--text-main);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.target-player-select.ct {
+  color: var(--ct-color);
+  border: 1px solid var(--ct-border);
+}
+
+.target-player-select.t {
+  color: var(--t-color);
+  border: 1px solid var(--t-border);
+}
+
+.target-player-select option,
+.target-player-select optgroup {
+  background: #17191d;
+}
+
+.help-tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-muted);
+  cursor: help;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.help-tooltip-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* Footer Launch Button */

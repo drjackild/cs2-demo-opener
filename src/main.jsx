@@ -21,6 +21,7 @@ function MainApp() {
   const [demoPlayers, setDemoPlayers] = useState([]);
   const [mapName, setMapName] = useState('');
   const [selectedTeam, setSelectedTeam] = useState(null);
+  const [targetPlayerName, setTargetPlayerName] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [launchSuccess, setLaunchSuccess] = useState(false);
@@ -186,6 +187,7 @@ function MainApp() {
       } else {
         setSelectedTeam(null);
       }
+      setTargetPlayerName('');
 
       // Resolve streamer names in the background
       resolveStreamerNames(players);
@@ -223,6 +225,7 @@ function MainApp() {
     setDemoPlayers([]);
     setMapName('');
     setSelectedTeam(null);
+    setTargetPlayerName('');
     setLaunchSuccess(false);
   };
 
@@ -252,7 +255,8 @@ function MainApp() {
         voiceMode: selectedVoiceMode,
         selfTeam: selectedTeam || 0,
         cs2Path: cs2Path,
-        players: demoPlayers
+        players: demoPlayers,
+        targetPlayerName: targetPlayerName || null
       });
 
       if (status === 'already_running') {
@@ -379,6 +383,8 @@ function MainApp() {
             localSteamUsers={localSteamUsers}
             selectedTeam={selectedTeam}
             onSelectTeam={setSelectedTeam}
+            targetPlayerName={targetPlayerName}
+            onSelectTargetPlayer={setTargetPlayerName}
             onRemoveDemo={handleRemoveDemo}
           />
         ) : (

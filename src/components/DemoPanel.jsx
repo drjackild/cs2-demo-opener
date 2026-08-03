@@ -1,6 +1,8 @@
 import { h } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { TrashIcon, ArrowDownIcon } from './Icons';
+import LineupPreview from './LineupPreview';
+import CameraLockControl from './CameraLockControl';
 
 export default function DemoPanel({
   demoPath,
@@ -10,6 +12,8 @@ export default function DemoPanel({
   localSteamUsers,
   selectedTeam,
   onSelectTeam,
+  targetPlayerName,
+  onSelectTargetPlayer,
   onRemoveDemo
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -29,7 +33,6 @@ export default function DemoPanel({
   }, []);
 
   const filename = demoPath.split(/[/\\]/).pop();
-
   const ctPlayers = demoPlayers.filter((p) => p.team === 3);
   const tPlayers = demoPlayers.filter((p) => p.team === 2);
 
@@ -51,8 +54,9 @@ export default function DemoPanel({
 
   return (
     <div id="loaded-demo-panel" class="loaded-demo-panel glass-panel" style={{ padding: '15px' }}>
-      <div class="demo-file-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div class="demo-info" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+      {/* Demo File & Map Info Header */}
+      <div class="demo-file-badge">
+        <div class="demo-info">
           <span class="demo-name" id="demo-name-label">{filename}</span>
           <span class="demo-status" id="demo-status-label">{demoStatus}</span>
         </div>
@@ -161,24 +165,23 @@ export default function DemoPanel({
         </div>
 
         {/* Selected team lineup preview */}
-        {selectedTeam !== null && (
-          <div class="selected-team-players-preview" id="selected-team-players-preview" style={{ display: 'flex' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-dark)', marginRight: '6px' }}>
-              LINEUP:
-            </span>
-            {(selectedTeam === 3 ? ctPlayers : tPlayers).map((player) => (
-              <span class={`player-preview-badge ${getBadgeClass(selectedTeam)}`} key={player.steam_id} data-steam-id={player.steam_id}>
-                {player.name}
-                {player.realName && (
-                  <span style={{ fontSize: '0.8rem', opacity: 0.8, fontWeight: 'normal', marginLeft: '2px' }}>
-                    (Steam: {player.realName})
-                  </span>
-                )}
-                {isLocalUser(player.steam_id) && <span class="tag-badge self">Local</span>}
-              </span>
-            ))}
-          </div>
-        )}
+        <LineupPreview
+          selectedTeam={selectedTeam}
+          ctPlayers={ctPlayers}
+          tPlayers={tPlayers}
+          targetPlayerName={targetPlayerName}
+          onSelectTargetPlayer={onSelectTargetPlayer}
+          localSteamUsers={localSteamUsers}
+        />
+
+        {/* Camera Player Target Selector */}
+        <CameraLockControl
+          demoPlayers={demoPlayers}
+          ctPlayers={ctPlayers}
+          tPlayers={tPlayers}
+          targetPlayerName={targetPlayerName}
+          onSelectTargetPlayer={onSelectTargetPlayer}
+        />
       </div>
     </div>
   );
