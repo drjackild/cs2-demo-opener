@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Exclude packages and binaries, which VSCode is usually download for Go repos
+pkg/
+bin/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
